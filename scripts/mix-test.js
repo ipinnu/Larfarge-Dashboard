@@ -41,11 +41,11 @@ let tokenExpiresAt = 0;
 const PANIC_EVENT_TYPE_ID = '-4444421556390778105';
 
 const WARNING_EVENT_TYPES = {
-  '4750800303282680186': 'Harsh Brake',
-  '6454149451280645233': 'Harsh Accel',
-  '-3890646499157906515': 'Overspeed',
-  '-4596269900191457380': 'Overspeed Tiered',
-  '4291175374538259638': 'Harsh Corner',
+  '4750800303282680186': 'Harsh Braking',
+  '6454149451280645233': 'Harsh Acceleration',
+  '-3890646499157906515': 'Overspeeding',
+  '-4596269900191457380': 'Overspeeding Tiered',
+  '4291175374538259638': 'Harsh Cornering',
 };
 
 const triggeredEvents = new Map();

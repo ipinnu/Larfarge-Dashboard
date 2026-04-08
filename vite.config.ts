@@ -135,7 +135,7 @@ export default defineConfig({
             return
           }
           try {
-            const dataPath = path.join(process.cwd(), 'data.json')
+            const dataPath = path.join(process.cwd(), 'public', 'data.json')
             const data = fs.readFileSync(dataPath, 'utf8')
             res.setHeader('Content-Type', 'application/json')
             res.end(data)
@@ -168,22 +168,6 @@ export default defineConfig({
           }
         })
 
-        // Warning events endpoint
-        server.middlewares.use('/api/events', async (req, res) => {
-          if (!isAuthorized(req)) {
-            res.statusCode = 401
-            res.end('Unauthorized')
-            return
-          }
-          if (req.method !== 'GET') {
-            res.statusCode = 405
-            res.end('Method Not Allowed')
-            return
-          }
-          res.setHeader('Content-Type', 'application/json')
-          res.end(JSON.stringify(getWarningEvents()))
-        })
-
         // Events log endpoint — reads from events.log and panic.log, enriches with vehicle data
         server.middlewares.use('/api/events/log', async (req, res) => {
           if (!isAuthorized(req)) {
@@ -198,6 +182,22 @@ export default defineConfig({
           }
           try {
             const entries: any[] = []
+
+            // Warning events endpoint
+        server.middlewares.use('/api/events', async (req, res) => {
+          if (!isAuthorized(req)) {
+            res.statusCode = 401
+            res.end('Unauthorized')
+            return
+          }
+          if (req.method !== 'GET') {
+            res.statusCode = 405
+            res.end('Method Not Allowed')
+            return
+          }
+          res.setHeader('Content-Type', 'application/json')
+          res.end(JSON.stringify(getWarningEvents()))
+        })
 
             // Load vehicle lookup from data.json for enrichment
             const vehicleLookup = new Map<string, any>()

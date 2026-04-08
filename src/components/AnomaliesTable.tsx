@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, AlertTriangle, Volume2, ChevronLeft, ChevronRight, WifiOff } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, WifiOff } from 'lucide-react';
 
 interface Warning {
   eventId: string;
@@ -32,7 +32,6 @@ const ITEMS_PER_PAGE = 50;
 const STALE_THRESHOLD_MS = 30_000;
 const WARNING_CLEAR_MS = 60_000;
 
-// Deduplicate warning labels for display
 function getUniqueWarningLabels(warnings: Warning[]): string[] {
   const seen = new Set<string>();
   return warnings.filter(w => {
@@ -42,7 +41,6 @@ function getUniqueWarningLabels(warnings: Warning[]): string[] {
   }).map(w => w.label);
 }
 
-// Warning badge with hover tooltip
 function WarningBadge({ warnings }: { warnings: Warning[] }) {
   const [hovered, setHovered] = useState(false);
   const labels = getUniqueWarningLabels(warnings);
@@ -56,49 +54,27 @@ function WarningBadge({ warnings }: { warnings: Warning[] }) {
       onMouseLeave={() => setHovered(false)}
     >
       <span style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '5px',
-        padding: '4px 10px',
-        borderRadius: '9999px',
-        fontSize: '11px',
-        fontWeight: '500',
-        background: '#fef3c7',
-        color: '#854F0B',
-        border: '0.5px solid #fde68a',
-        cursor: 'default',
-        whiteSpace: 'nowrap',
+        display: 'inline-flex', alignItems: 'center', gap: '5px',
+        padding: '4px 10px', borderRadius: '9999px', fontSize: '11px',
+        fontWeight: '500', background: '#fef3c7', color: '#854F0B',
+        border: '0.5px solid #fde68a', cursor: 'default',
+        maxWidth: '130px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>
         {first}
         {extra > 0 && (
           <span style={{
-            background: '#d97706',
-            color: '#fff',
-            borderRadius: '9999px',
-            width: '16px',
-            height: '16px',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '9px',
-            fontWeight: '700',
-            flexShrink: 0,
-          }}>
-            +{extra}
-          </span>
+            background: '#d97706', color: '#fff', borderRadius: '9999px',
+            width: '16px', height: '16px', display: 'inline-flex',
+            alignItems: 'center', justifyContent: 'center', fontSize: '9px',
+            fontWeight: '700', flexShrink: 0,
+          }}>+{extra}</span>
         )}
       </span>
       {hovered && labels.length > 1 && (
         <div style={{
-          position: 'absolute',
-          bottom: 'calc(100% + 6px)',
-          left: '0',
-          background: '#1e293b',
-          borderRadius: '8px',
-          padding: '8px 12px',
-          minWidth: '160px',
-          zIndex: 100,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+          position: 'absolute', bottom: 'calc(100% + 6px)', left: '0',
+          background: '#1e293b', borderRadius: '8px', padding: '8px 12px',
+          minWidth: '160px', zIndex: 100, boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
           pointerEvents: 'none',
         }}>
           <div style={{ fontSize: '11px', fontWeight: '500', color: '#94a3b8', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -110,14 +86,9 @@ function WarningBadge({ warnings }: { warnings: Warning[] }) {
             ))}
           </div>
           <div style={{
-            position: 'absolute',
-            bottom: '-5px',
-            left: '14px',
-            width: '10px',
-            height: '10px',
-            background: '#1e293b',
-            transform: 'rotate(45deg)',
-            borderRadius: '2px',
+            position: 'absolute', bottom: '-5px', left: '14px',
+            width: '10px', height: '10px', background: '#1e293b',
+            transform: 'rotate(45deg)', borderRadius: '2px',
           }} />
         </div>
       )}
@@ -129,15 +100,12 @@ export default function FleetAnomalies({ statusFilter, onFilterChange, authFetch
   const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
-  const [audioEnabled, setAudioEnabled] = useState(true);
-  const [isSpeaking, setIsSpeaking] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [isStale, setIsStale] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const acknowledgedIds = useRef<Set<string>>(new Set());
-  const repeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const anomaliesRef = useRef<Anomaly[]>([]);
   const warningTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
@@ -167,7 +135,6 @@ export default function FleetAnomalies({ statusFilter, onFilterChange, authFetch
     fetchAcknowledged();
   }, []);
 
-  // Auto-clear warnings after 60 seconds
   const scheduleWarningClear = (assetId: string) => {
     if (warningTimers.current.has(assetId)) {
       clearTimeout(warningTimers.current.get(assetId)!);
@@ -192,7 +159,6 @@ export default function FleetAnomalies({ statusFilter, onFilterChange, authFetch
         acknowledgedIds.current.has(v.id) ? { ...v, panic: false } : v
       );
 
-      // Schedule auto-clear for any vehicle that has new warnings
       filtered.forEach(v => {
         if (v.warnings && v.warnings.length > 0) {
           scheduleWarningClear(v.id);
@@ -223,7 +189,6 @@ export default function FleetAnomalies({ statusFilter, onFilterChange, authFetch
         setIsStale(true);
       }
     };
-
     checkStale();
     const interval = setInterval(checkStale, 10_000);
     return () => clearInterval(interval);
@@ -239,58 +204,11 @@ export default function FleetAnomalies({ statusFilter, onFilterChange, authFetch
     };
   }, []);
 
-  // Cleanup warning timers on unmount
   useEffect(() => {
     return () => {
       warningTimers.current.forEach(t => clearTimeout(t));
     };
   }, []);
-
-  useEffect(() => {
-    const panicVehicles = anomalies.filter(v => v.panic);
-
-    if (panicVehicles.length > 0 && audioEnabled) {
-      if (!repeatIntervalRef.current) {
-        speakPanicAlert(panicVehicles[0]);
-        repeatIntervalRef.current = setInterval(() => {
-          const currentPanic = anomaliesRef.current.filter(v => v.panic);
-          if (currentPanic.length > 0) {
-            speakPanicAlert(currentPanic[0]);
-          }
-        }, 10000);
-      }
-    } else {
-      if (repeatIntervalRef.current) {
-        clearInterval(repeatIntervalRef.current);
-        repeatIntervalRef.current = null;
-      }
-      window.speechSynthesis.cancel();
-      setIsSpeaking(false);
-    }
-  }, [anomalies, audioEnabled]);
-
-  useEffect(() => {
-    return () => {
-      if (repeatIntervalRef.current) clearInterval(repeatIntervalRef.current);
-      window.speechSynthesis.cancel();
-    };
-  }, []);
-
-  const speakPanicAlert = (vehicle: Anomaly) => {
-    if (!audioEnabled || !('speechSynthesis' in window)) return;
-    setIsSpeaking(true);
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(
-      `Emergency! Vehicle ${vehicle.assetName} requires your immediate attention.`
-    );
-    utterance.rate = 1.2;
-    utterance.pitch = 1.3;
-    utterance.volume = 1.0;
-    utterance.lang = 'en-US';
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-    window.speechSynthesis.speak(utterance);
-  };
 
   const handleAcknowledge = async (anomalyId: string) => {
     try {
@@ -306,19 +224,6 @@ export default function FleetAnomalies({ statusFilter, onFilterChange, authFetch
     setAnomalies(prev => prev.map(anomaly =>
       anomaly.id === anomalyId ? { ...anomaly, panic: false } : anomaly
     ));
-  };
-
-  const toggleAudio = () => {
-    setAudioEnabled(prev => {
-      if (prev) {
-        window.speechSynthesis.cancel();
-        if (repeatIntervalRef.current) {
-          clearInterval(repeatIntervalRef.current);
-          repeatIntervalRef.current = null;
-        }
-      }
-      return !prev;
-    });
   };
 
   const sortedAnomalies = [...anomalies].sort((a, b) => {
@@ -385,8 +290,6 @@ export default function FleetAnomalies({ statusFilter, onFilterChange, authFetch
     );
   }
 
-  const panicCount = anomalies.filter(v => v.panic).length;
-
   return (
     <div style={{ fontFamily: 'var(--cd-font-body)' }}>
       <div>
@@ -401,35 +304,8 @@ export default function FleetAnomalies({ statusFilter, onFilterChange, authFetch
           </div>
         )}
 
-        {/* Panic Banner */}
-        {panicCount > 0 && (
-          <div style={{ backgroundColor: 'var(--cd-danger-bg)', border: '1px solid var(--cd-danger-border)', borderRadius: '8px', padding: isMobile ? '12px' : '16px 20px', marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 10px 24px rgba(200, 16, 46, 0.2)', animation: 'flash 1s infinite', gap: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
-              <AlertTriangle style={{ width: '20px', height: '20px', color: 'var(--cd-danger)', flexShrink: 0, animation: 'pulse 2s infinite' }} />
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontWeight: '600', color: 'var(--cd-danger)', fontSize: isMobile ? '14px' : '16px' }}>
-                  🚨 {panicCount} Active Alert{panicCount > 1 ? 's' : ''}
-                </div>
-                {!isMobile && (
-                  <div style={{ fontSize: '14px', color: 'var(--cd-danger-soft)' }}>
-                    Priority vehicles appear at the top • {isSpeaking ? '🔊 Speaking Now' : 'Ready'}
-                  </div>
-                )}
-              </div>
-            </div>
-            <button
-              onClick={toggleAudio}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: isMobile ? '6px 10px' : '8px 16px', backgroundColor: audioEnabled ? 'var(--cd-danger)' : 'var(--cd-surface-2)', color: audioEnabled ? '#fff' : 'var(--cd-text-muted)', borderRadius: '6px', border: '1px solid var(--cd-danger-border)', cursor: 'pointer', fontSize: isMobile ? '12px' : '14px', fontWeight: '500', flexShrink: 0 }}
-            >
-              <Volume2 style={{ width: '16px', height: '16px' }} />
-              {isMobile ? (audioEnabled ? 'Mute' : 'Unmute') : (audioEnabled ? 'Mute Alerts' : 'Enable Voice')}
-            </button>
-          </div>
-        )}
-
         <div style={{ backgroundColor: 'var(--cd-surface)', borderRadius: '14px', border: '1px solid var(--cd-border)', overflow: 'hidden', boxShadow: 'var(--cd-card-shadow)' }}>
 
-          {/* Table Header */}
           <div style={{ padding: isMobile ? '16px' : '24px', borderBottom: '1px solid var(--cd-border)' }}>
             <h2 style={{ fontSize: isMobile ? '18px' : '26px', fontWeight: '600', color: 'var(--cd-text)', marginBottom: '4px', fontFamily: 'var(--cd-font-display)' }}>
               Fleet Status ({anomalies.length} vehicles)
@@ -445,7 +321,6 @@ export default function FleetAnomalies({ statusFilter, onFilterChange, authFetch
             </div>
           </div>
 
-          {/* Search & Controls */}
           <div style={{ padding: isMobile ? '12px' : '16px', borderBottom: '1px solid var(--cd-border)', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             <div style={{ flex: '1', minWidth: '160px', position: 'relative' }}>
               <Search style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', width: '16px', height: '16px', color: 'var(--cd-text-soft)' }} />
@@ -479,7 +354,6 @@ export default function FleetAnomalies({ statusFilter, onFilterChange, authFetch
             )}
           </div>
 
-          {/* Vehicle List */}
           <div style={{ padding: isMobile ? '12px' : '24px' }}>
 
             {!isMobile && (
@@ -500,7 +374,6 @@ export default function FleetAnomalies({ statusFilter, onFilterChange, authFetch
                   {searchTerm || statusFilter !== 'All' ? 'No vehicles match your search' : 'No vehicles found'}
                 </div>
               ) : isMobile ? (
-                /* ── MOBILE CARD LAYOUT ── */
                 currentPageItems.map((anomaly) => {
                   const colors = getStatusColor(anomaly.status);
                   const isPanic = anomaly.panic;
@@ -570,7 +443,6 @@ export default function FleetAnomalies({ statusFilter, onFilterChange, authFetch
                   );
                 })
               ) : (
-                /* ── DESKTOP TABLE LAYOUT ── */
                 currentPageItems.map((anomaly) => {
                   const colors = getStatusColor(anomaly.status);
                   const isPanic = anomaly.panic;
@@ -652,7 +524,6 @@ export default function FleetAnomalies({ statusFilter, onFilterChange, authFetch
               )}
             </div>
 
-            {/* Pagination */}
             {totalPages > 1 && (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '24px', paddingTop: '24px', borderTop: '1px solid var(--cd-border)' }}>
                 <div style={{ fontSize: '14px', color: 'var(--cd-text-muted)' }}>

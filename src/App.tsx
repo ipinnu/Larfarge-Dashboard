@@ -1,6 +1,6 @@
 import { SignedIn, SignedOut, SignIn, useClerk } from "@clerk/clerk-react";
-import { useEffect, useState } from 'react';
-import { Moon, Sun, Power, RotateCcw, ScrollText, Download, Map, Table } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { Moon, Sun, Power, RotateCcw, ScrollText, Download, Map, Table, Volume2 } from 'lucide-react';
 import AnomaliesTable from './components/AnomaliesTable';
 import MapView from './components/MapView';
 import EventLogPanel from './components/EventLogPanel';
@@ -27,7 +27,7 @@ const statConfig: { key: keyof Omit<Metadata, 'lastUpdate'>; label: string; filt
   { key: 'stationary', label: 'Stationary', filter: 'Stationary', color: '#0d9488', bg: '#f0fdfa', border: '#99f6e4', tooltip: 'Vehicle has been stationary for less than 1 hour' },
   { key: 'parked', label: 'Parked', filter: 'Parked', color: '#ea580c', bg: '#fff7ed', border: '#fed7aa', tooltip: 'Vehicle has been stationary for between 1 and 24 hours' },
   { key: 'inactive', label: 'Inactive', filter: 'Inactive', color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe', tooltip: 'Vehicle has not moved in over 24 hours' },
-  { key: 'offline', label: 'Offline', filter: 'Offline', color: '#64748b', bg: '#f1f5f9', border: '#e2e8f0', tooltip: 'No GPS data has been received for this vehicle' },
+  //{ key: 'offline', label: 'Offline', filter: 'Offline', color: '#64748b', bg: '#f1f5f9', border: '#e2e8f0', tooltip: 'No GPS data has been received for this vehicle' },
   { key: 'panic', label: 'Panic', filter: 'All', color: '#c8102e', bg: '#fff1f2', border: '#fecdd3', tooltip: 'Vehicle has an active panic alert' },
 ];
 
@@ -53,6 +53,11 @@ function DashboardContent() {
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'map'>('table');
   const [isMobile, setIsMobile] = useState(false);
+  const [audioEnabled, setAudioEnabled] = useState(true);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [panicVehicles, setPanicVehicles] = useState<any[]>([]);
+  const repeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const panicVehiclesRef = useRef<any[]>([]);
   const [metadata, setMetadata] = useState<Metadata>({
     totalVehicles: 0,
     moving: 0,
@@ -86,6 +91,35 @@ function DashboardContent() {
     window.localStorage.setItem('cd-theme', theme);
   }, [theme]);
 
+  const speakPanicAlert = (vehicle: any) => {
+    if (!audioEnabled || !('speechSynthesis' in window)) return;
+    setIsSpeaking(true);
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(
+      `Emergency! Vehicle ${vehicle.assetName} requires your immediate attention.`
+    );
+    utterance.rate = 1.2;
+    utterance.pitch = 1.3;
+    utterance.volume = 1.0;
+    utterance.lang = 'en-US';
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const toggleAudio = () => {
+    setAudioEnabled(prev => {
+      if (prev) {
+        window.speechSynthesis.cancel();
+        if (repeatIntervalRef.current) {
+          clearInterval(repeatIntervalRef.current);
+          repeatIntervalRef.current = null;
+        }
+      }
+      return !prev;
+    });
+  };
+
   const loadMetadata = async () => {
     try {
       const res = await authFetch('/api/metadata');
@@ -96,12 +130,49 @@ function DashboardContent() {
     } catch {
       // ignore
     }
+    try {
+      const res = await authFetch('/api/data');
+      if (res.ok) {
+        const data = await res.json();
+        const panics = data.filter((v: any) => v.panic);
+        setPanicVehicles(panics);
+        panicVehiclesRef.current = panics;
+      }
+    } catch {
+      // ignore
+    }
   };
 
   useEffect(() => {
     loadMetadata();
     const interval = setInterval(loadMetadata, 10_000);
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (panicVehicles.length > 0 && audioEnabled) {
+      if (!repeatIntervalRef.current) {
+        speakPanicAlert(panicVehicles[0]);
+        repeatIntervalRef.current = setInterval(() => {
+          const current = panicVehiclesRef.current;
+          if (current.length > 0) speakPanicAlert(current[0]);
+        }, 10000);
+      }
+    } else {
+      if (repeatIntervalRef.current) {
+        clearInterval(repeatIntervalRef.current);
+        repeatIntervalRef.current = null;
+      }
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    }
+  }, [panicVehicles, audioEnabled]);
+
+  useEffect(() => {
+    return () => {
+      if (repeatIntervalRef.current) clearInterval(repeatIntervalRef.current);
+      window.speechSynthesis.cancel();
+    };
   }, []);
 
   const handleStatClick = (filter: StatusFilter | 'All', key: string) => {
@@ -123,16 +194,16 @@ function DashboardContent() {
   };
 
   const handleMapAcknowledge = async (id: string) => {
-  try {
-    await authFetch('/api/acknowledged', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id }),
-    });
-  } catch {
-    // ignore
-  }
-};
+    try {
+      await authFetch('/api/acknowledged', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+    } catch {
+      // ignore
+    }
+  };
 
   const isDark = theme === 'dark';
   const cardBg = isDark ? 'var(--cd-surface)' : '#ffffff';
@@ -206,55 +277,22 @@ function DashboardContent() {
             </div>
 
             <div className="cd-header-buttons flex items-center gap-3">
-              <button
-                className="cd-iconbtn p-2 rounded-lg transition-colors"
-                onClick={() => setTheme(prev => (prev === 'dark' ? 'light' : 'dark'))}
-                aria-label="Toggle dark mode"
-              >
+              <button className="cd-iconbtn p-2 rounded-lg transition-colors" onClick={() => setTheme(prev => (prev === 'dark' ? 'light' : 'dark'))} aria-label="Toggle dark mode">
                 {theme === 'dark' ? <Sun className="w-5 h-5 text-gray-600" /> : <Moon className="w-5 h-5 text-gray-600" />}
               </button>
-
-              <button
-                className="cd-iconbtn p-2 rounded-lg transition-colors"
-                onClick={() => setShowLogPanel(true)}
-                aria-label="Event log"
-                title="Event Log"
-              >
+              <button className="cd-iconbtn p-2 rounded-lg transition-colors" onClick={() => setShowLogPanel(true)} aria-label="Event log" title="Event Log">
                 <ScrollText className="w-5 h-5 text-gray-600" />
               </button>
-
-              <button
-                className="cd-iconbtn p-2 rounded-lg transition-colors"
-                onClick={() => setShowDownloadModal(true)}
-                aria-label="Download report"
-                title="Download Report"
-              >
+              <button className="cd-iconbtn p-2 rounded-lg transition-colors" onClick={() => setShowDownloadModal(true)} aria-label="Download report" title="Download Report">
                 <Download className="w-5 h-5 text-gray-600" />
               </button>
-
-              <button
-                className="cd-iconbtn p-2 rounded-lg transition-colors"
-                onClick={() => setViewMode(prev => prev === 'table' ? 'map' : 'table')}
-                aria-label="Toggle map view"
-                title={viewMode === 'table' ? 'Switch to Map View' : 'Switch to Table View'}
-              >
+              <button className="cd-iconbtn p-2 rounded-lg transition-colors" onClick={() => setViewMode(prev => prev === 'table' ? 'map' : 'table')} aria-label="Toggle map view" title={viewMode === 'table' ? 'Switch to Map View' : 'Switch to Table View'}>
                 {viewMode === 'table' ? <Map className="w-5 h-5 text-gray-600" /> : <Table className="w-5 h-5 text-gray-600" />}
               </button>
-
-              <button
-                className="cd-iconbtn p-2 rounded-lg transition-colors"
-                onClick={() => setShowResetConfirm(true)}
-                aria-label="Reset dashboard"
-                title="Reset Dashboard"
-              >
+              <button className="cd-iconbtn p-2 rounded-lg transition-colors" onClick={() => setShowResetConfirm(true)} aria-label="Reset dashboard" title="Reset Dashboard">
                 <RotateCcw className="w-5 h-5 text-gray-600" />
               </button>
-
-              <button
-                className="cd-iconbtn p-2 rounded-lg transition-colors"
-                onClick={() => setShowLogoutConfirm(true)}
-                aria-label="Log out"
-              >
+              <button className="cd-iconbtn p-2 rounded-lg transition-colors" onClick={() => setShowLogoutConfirm(true)} aria-label="Log out">
                 <Power className="w-5 h-5 text-gray-600" />
               </button>
             </div>
@@ -276,7 +314,6 @@ function DashboardContent() {
                   ? false
                   : (stat.filter === 'All' ? statusFilter === 'All' : statusFilter === stat.filter);
                 const isPanic = stat.key === 'panic';
-
                 return (
                   <button
                     key={stat.key}
@@ -290,23 +327,10 @@ function DashboardContent() {
                       boxShadow: isActive ? `0 0 0 2px ${stat.color}33` : 'none',
                     }}
                   >
-                    <div style={{
-                      fontSize: '28px',
-                      fontWeight: '700',
-                      color: stat.color,
-                      lineHeight: 1,
-                      animation: isPanic && value > 0 ? 'pulse 1.5s infinite' : 'none',
-                    }}>
+                    <div style={{ fontSize: '28px', fontWeight: '700', color: stat.color, lineHeight: 1, animation: isPanic && value > 0 ? 'pulse 1.5s infinite' : 'none' }}>
                       {value}
                     </div>
-                    <div style={{
-                      fontSize: '11px',
-                      color: isDark ? 'var(--cd-text-muted)' : '#64748b',
-                      marginTop: '6px',
-                      fontWeight: '600',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.06em',
-                    }}>
+                    <div style={{ fontSize: '11px', color: isDark ? 'var(--cd-text-muted)' : '#64748b', marginTop: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                       {stat.label}
                     </div>
                   </button>
@@ -315,14 +339,54 @@ function DashboardContent() {
             </div>
           </div>
 
+          {/* Panic Banner — always visible regardless of view */}
+          {panicVehicles.length > 0 && (
+            <div style={{ backgroundColor: 'var(--cd-danger-bg)', border: '1px solid var(--cd-danger-border)', borderRadius: '8px', padding: isMobile ? '12px' : '16px 20px', marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 10px 24px rgba(200, 16, 46, 0.2)', animation: 'flash 1s infinite', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--cd-danger)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                  <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: '600', color: 'var(--cd-danger)', fontSize: isMobile ? '14px' : '16px' }}>
+                    🚨 {panicVehicles.length} Active Alert{panicVehicles.length > 1 ? 's' : ''}
+                  </div>
+                  {!isMobile && (
+                    <div style={{ fontSize: '14px', color: 'var(--cd-danger-soft)' }}>
+                      {viewMode === 'table' ? 'Priority vehicles appear at the top' : 'Click the red flag on the map to acknowledge'} • {isSpeaking ? '🔊 Speaking Now' : 'Ready'}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={toggleAudio}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: isMobile ? '6px 10px' : '8px 16px', backgroundColor: audioEnabled ? 'var(--cd-danger)' : 'var(--cd-surface-2)', color: audioEnabled ? '#fff' : 'var(--cd-text-muted)', borderRadius: '6px', border: '1px solid var(--cd-danger-border)', cursor: 'pointer', fontSize: isMobile ? '12px' : '14px', fontWeight: '500', flexShrink: 0 }}
+              >
+                <Volume2 style={{ width: '16px', height: '16px' }} />
+                {isMobile ? (audioEnabled ? 'Mute' : 'Unmute') : (audioEnabled ? 'Mute Alerts' : 'Enable Voice')}
+              </button>
+            </div>
+          )}
+
           {/* Main View — Table or Map */}
           {viewMode === 'table' ? (
-              <AnomaliesTable statusFilter={statusFilter} onFilterChange={setStatusFilter} authFetch={authFetch} />
-            ) : (
-              <MapView authFetch={authFetch} statusFilter={statusFilter} onAcknowledge={handleMapAcknowledge} />
-            )}
+            <AnomaliesTable statusFilter={statusFilter} onFilterChange={setStatusFilter} authFetch={authFetch} />
+          ) : (
+            <MapView authFetch={authFetch} statusFilter={statusFilter} onAcknowledge={handleMapAcknowledge} />
+          )}
+
         </div>
       </div>
+
+      <style>{`
+        @keyframes flash {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.7; }
+        }
+        @keyframes pulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.1); }
+        }
+      `}</style>
     </div>
   );
 }
@@ -335,7 +399,6 @@ export default function App() {
           <SignIn routing="hash" />
         </div>
       </SignedOut>
-
       <SignedIn>
         <DashboardContent />
       </SignedIn>

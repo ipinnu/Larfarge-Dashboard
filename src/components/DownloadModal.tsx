@@ -9,7 +9,7 @@ interface Props {
 type DateRange = 'today' | '7days' | '30days' | 'alltime' | 'custom';
 type Format = 'csv' | 'excel' | 'pdf';
 
-const EVENT_TYPES = ['Panic', 'Harsh Brake', 'Harsh Accel', 'Overspeed', 'Overspeed Tiered', 'Harsh Corner'];
+const EVENT_TYPES = ['Panic', 'Harsh Braking', 'Harsh Acceleration', 'Overspeeding', 'Overspeeding Tiered', 'Harsh Cornering'];
 
 export default function DownloadModal({ onClose, authFetch }: Props) {
   const [dateRange, setDateRange] = useState<DateRange>('today');
@@ -172,7 +172,7 @@ export default function DownloadModal({ onClose, authFetch }: Props) {
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: '16px' }}>
+    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px' }}>
       <div style={{ backgroundColor: 'var(--cd-surface)', borderRadius: '14px', border: '1px solid var(--cd-border)', padding: '24px', width: '100%', maxWidth: '420px', maxHeight: '90vh', overflowY: 'auto', boxShadow: 'var(--cd-card-shadow)' }}>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
