@@ -41,6 +41,7 @@ amplifyconfiguration*
 public/data.json
 public/metadata.json
 public/acknowledged.json
+public/drivers.json
 
 # Sensitive/dead code files
 temp.js
@@ -61,3 +62,5 @@ metadata.json
 #new
 panic.log
 events.log
+backfill.js
+enrich.js

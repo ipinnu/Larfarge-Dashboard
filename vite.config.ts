@@ -33,7 +33,7 @@ export default defineConfig({
   server: {
     host: true,
     watch: {
-      ignored: ['**/scripts/mix-test.js', '**/public/data.json', '**/public/metadata.json', '**/public/acknowledged.json'],
+      ignored: ['**/scripts/mix-test.js', '**/public/data.json', '**/public/metadata.json', '**/public/acknowledged.json', '**/public/drivers.json'],
     },
   },
   plugins: [
@@ -198,6 +198,34 @@ export default defineConfig({
           res.setHeader('Content-Type', 'application/json')
           res.end(JSON.stringify(getWarningEvents()))
         })
+
+        // Drivers endpoint
+          server.middlewares.use('/api/drivers', async (req, res) => {
+            if (!isAuthorized(req)) {
+              res.statusCode = 401
+              res.end('Unauthorized')
+              return
+            }
+            if (req.method !== 'GET') {
+              res.statusCode = 405
+              res.end('Method Not Allowed')
+              return
+            }
+            try {
+              const driversPath = path.join(process.cwd(), 'public', 'drivers.json')
+              if (!fs.existsSync(driversPath)) {
+                res.setHeader('Content-Type', 'application/json')
+                res.end(JSON.stringify([]))
+                return
+              }
+              const data = fs.readFileSync(driversPath, 'utf8')
+              res.setHeader('Content-Type', 'application/json')
+              res.end(data)
+            } catch {
+              res.statusCode = 404
+              res.end('Not Found')
+            }
+          })
 
             // Load vehicle lookup from data.json for enrichment
             const vehicleLookup = new Map<string, any>()

@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
 
+declare const jspdf: any;
+
 interface Props {
   onClose: () => void;
   authFetch: (url: string, options?: RequestInit) => Promise<Response>;
@@ -9,7 +11,30 @@ interface Props {
 type DateRange = 'today' | '7days' | '30days' | 'alltime' | 'custom';
 type Format = 'csv' | 'excel' | 'pdf';
 
-const EVENT_TYPES = ['Panic', 'Harsh Braking', 'Harsh Acceleration', 'Overspeeding', 'Overspeeding Tiered', 'Harsh Cornering'];
+const EVENT_TYPES = ['Panic', 'Harsh Braking', 'Harsh Acceleration', 'Overspeeding', 'Overspeed Tiered', 'Harsh Cornering'];
+const HIDDEN_LABELS = ['Possible Power Tamper', 'Battery Disconnection', 'Battery Disconnected', 'Front Panel Tamper', 'Back Panel Tamper', 'No Blue Key'];
+
+const COLUMNS = [
+  { header: 'Asset Name', get: (e: any) => e.assetName || 'N/A' },
+  { header: 'Reg No', get: (e: any) => e.regNo || 'N/A' },
+  { header: 'Transporter', get: (e: any) => e.transporter || 'N/A' },
+  { header: 'Driver', get: (e: any) => e.driverName || 'N/A' },
+  { header: 'Phone', get: (e: any) => e.driverPhone || 'N/A' },
+  { header: 'Event', get: (e: any) => e.label || 'Panic' },
+  { header: 'Event Time', get: (e: any) => e.eventTime ? new Date(e.eventTime).toLocaleString('en-GB') : 'N/A' },
+  { header: 'Location', get: (e: any) => {
+    if (e.address && e.address !== 'N/A' && e.address !== 'null') return e.address;
+    const addr = e.rawEvent?.Position?.FormattedAddress;
+    if (addr && addr !== 'null') return addr;
+    const lat = e.rawEvent?.Position?.Latitude;
+    const lng = e.rawEvent?.Position?.Longitude;
+    if (lat && lng) return `${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}`;
+    return 'N/A';
+  }},
+];
+
+// Columns where values must be forced as text in CSV/Excel (phone numbers, large IDs)
+const TEXT_FORCE_COLUMNS = ['Phone', 'Reg No'];
 
 export default function DownloadModal({ onClose, authFetch }: Props) {
   const [dateRange, setDateRange] = useState<DateRange>('today');
@@ -40,7 +65,7 @@ export default function DownloadModal({ onClose, authFetch }: Props) {
   };
 
   const getDateFilter = (entry: any): boolean => {
-    const ts = new Date(entry.timestamp).getTime();
+    const ts = new Date(entry.eventTime || entry.timestamp).getTime();
     const now = Date.now();
     if (dateRange === 'today') {
       const start = new Date(); start.setHours(0, 0, 0, 0);
@@ -63,26 +88,24 @@ export default function DownloadModal({ onClose, authFetch }: Props) {
       if (!res.ok) throw new Error('Failed to fetch logs');
       const allEntries: any[] = await res.json();
 
-      let filtered = allEntries.filter(e => {
+      const filtered = allEntries.filter(e => {
         const label = e.label || 'Panic';
+        if (HIDDEN_LABELS.includes(label)) return false;
         const matchesEvent = selectedEvents.some(sel =>
           sel === 'Panic' ? e.type === 'panic' : label === sel
         );
         const matchesVehicle = selectedVehicles.length === 0 ||
           selectedVehicles.some(v =>
-            e.assetId?.includes(v) ||
-            e.rawEvent?.AssetId?.includes(v)
+            (e.regNo && e.regNo.toUpperCase().includes(v)) ||
+            (e.assetName && e.assetName.toUpperCase().includes(v)) ||
+            (e.assetId && e.assetId.includes(v))
           );
         return matchesEvent && matchesVehicle && getDateFilter(e);
       });
 
-      if (format === 'csv') {
-        downloadCSV(filtered);
-      } else if (format === 'excel') {
-        downloadCSV(filtered, true);
-      } else if (format === 'pdf') {
-        downloadPDF(filtered);
-      }
+      if (format === 'csv') downloadCSV(filtered);
+      else if (format === 'excel') downloadExcel(filtered);
+      else if (format === 'pdf') downloadPDF(filtered);
     } catch (err) {
       console.error('Download failed:', err);
     } finally {
@@ -90,84 +113,99 @@ export default function DownloadModal({ onClose, authFetch }: Props) {
     }
   };
 
-  const downloadCSV = (entries: any[], asExcel = false) => {
-    const headers = ['Timestamp', 'Type', 'Event', 'Asset ID', 'Event Time', 'Received At', 'Latitude', 'Longitude', 'Address'];
-    const rows = entries.map(e => [
-      e.timestamp,
-      e.type,
-      e.label || 'Panic',
-      e.assetId,
-      e.eventTime,
-      e.receivedAt || '',
-      e.rawEvent?.Position?.Latitude || '',
-      e.rawEvent?.Position?.Longitude || '',
-      e.rawEvent?.Position?.FormattedAddress || '',
-    ]);
-
-    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: asExcel ? 'application/vnd.ms-excel' : 'text/csv' });
+  const downloadCSV = (entries: any[]) => {
+    const headers = COLUMNS.map(c => `"${c.header}"`);
+    const rows = entries.map(e => COLUMNS.map(c => {
+      const val = String(c.get(e));
+      const escaped = val.replace(/"/g, '""');
+      // Prefix phone numbers and reg nos with = to force text in Excel
+      if (TEXT_FORCE_COLUMNS.includes(c.header) && val !== 'N/A') {
+        return `"=""${escaped}"""`;
+      }
+      return `"${escaped}"`;
+    }));
+    const csv = '\uFEFF' + [headers, ...rows].map(r => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `cnl-fleet-report-${new Date().toISOString().slice(0, 10)}.${asExcel ? 'xls' : 'csv'}`;
+    a.download = `cnl-fleet-report-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
+const downloadExcel = (entries: any[]) => {
+  const wb = (window as any).XLSX.utils.book_new();
+  const wsData = [
+    COLUMNS.map(c => c.header),
+    ...entries.map(e => COLUMNS.map(c => {
+      const val = c.get(e);
+      if (c.header === 'Phone' && val !== 'N/A') return { v: val, t: 's' };
+      return String(val);
+    }))
+  ];
+  const ws = (window as any).XLSX.utils.aoa_to_sheet(wsData);
+  (window as any).XLSX.utils.book_append_sheet(wb, ws, 'Fleet Report');
+  (window as any).XLSX.writeFile(wb, `cnl-fleet-report-${new Date().toISOString().slice(0, 10)}.xlsx`);
+};
+
   const downloadPDF = (entries: any[]) => {
-    const rows = entries.map(e => `
-      <tr>
-        <td>${new Date(e.timestamp).toLocaleString('en-GB')}</td>
-        <td style="color:${e.type === 'panic' ? '#c8102e' : '#854F0B'};font-weight:600">${e.label || 'Panic'}</td>
-        <td>${e.assetId}</td>
-        <td>${e.eventTime ? new Date(e.eventTime).toLocaleString('en-GB') : ''}</td>
-        <td>${e.rawEvent?.Position?.FormattedAddress || ''}</td>
-      </tr>
-    `).join('');
+    try {
+      const { jsPDF } = jspdf;
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>CNL Fleet Report</title>
-        <style>
-          body { font-family: Arial, sans-serif; font-size: 12px; color: #0f172a; margin: 32px; }
-          h1 { font-size: 18px; color: #c8102e; margin-bottom: 4px; }
-          p { color: #64748b; margin-bottom: 20px; font-size: 11px; }
-          table { width: 100%; border-collapse: collapse; }
-          th { background: #f1f5f9; padding: 8px 10px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; border-bottom: 1px solid #e2e8f0; }
-          td { padding: 8px 10px; border-bottom: 1px solid #f1f5f9; font-size: 12px; }
-          tr:nth-child(even) { background: #f8fafc; }
-        </style>
-      </head>
-      <body>
-        <h1>CNL Fleet Event Report</h1>
-        <p>Generated: ${new Date().toLocaleString('en-GB')} • ${entries.length} events</p>
-        <table>
-          <thead>
-            <tr>
-              <th>Timestamp</th>
-              <th>Event</th>
-              <th>Asset ID</th>
-              <th>Event Time</th>
-              <th>Location</th>
-            </tr>
-          </thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </body>
-      </html>
-    `;
+      doc.setFontSize(16);
+      doc.setTextColor(200, 16, 46);
+      doc.text('CNL Fleet Event Report', 14, 16);
 
-    const blob = new Blob([html], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const win = window.open(url, '_blank');
-    if (win) {
-      win.onload = () => {
-        win.print();
-        URL.revokeObjectURL(url);
-      };
+      doc.setFontSize(9);
+      doc.setTextColor(100, 116, 139);
+      doc.text(`Generated: ${new Date().toLocaleString('en-GB')} • ${entries.length} event${entries.length !== 1 ? 's' : ''}`, 14, 23);
+
+      const filterSummary = [
+        `Date: ${dateRange === 'today' ? 'Today' : dateRange === '7days' ? 'Last 7 days' : dateRange === '30days' ? 'Last 30 days' : dateRange === 'alltime' ? 'All time' : `${fromDate} to ${toDate}`}`,
+        `Events: ${selectedEvents.join(', ')}`,
+        selectedVehicles.length > 0 ? `Vehicles: ${selectedVehicles.join(', ')}` : 'Vehicles: All',
+      ].join('  •  ');
+      doc.text(filterSummary, 14, 29);
+
+      const headers = COLUMNS.map(c => c.header);
+      const rows = entries.map(e => COLUMNS.map(c => String(c.get(e))));
+
+      (doc as any).autoTable({
+        head: [headers],
+        body: rows,
+        startY: 34,
+        styles: { fontSize: 7, cellPadding: 2 },
+        headStyles: {
+          fillColor: [241, 245, 249],
+          textColor: [100, 116, 139],
+          fontStyle: 'bold',
+          fontSize: 7,
+        },
+        columnStyles: {
+          0: { cellWidth: 30 },
+          1: { cellWidth: 22 },
+          2: { cellWidth: 25 },
+          3: { cellWidth: 28 },
+          4: { cellWidth: 25 },
+          5: { cellWidth: 22 },
+          6: { cellWidth: 28 },
+          7: { cellWidth: 'auto' },
+        },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        didParseCell: (data: any) => {
+          if (data.section === 'body' && data.column.index === 5) {
+            const isPanic = entries[data.row.index]?.type === 'panic';
+            data.cell.styles.textColor = isPanic ? [200, 16, 46] : [133, 79, 11];
+            data.cell.styles.fontStyle = 'bold';
+          }
+        },
+      });
+
+      doc.save(`cnl-fleet-report-${new Date().toISOString().slice(0, 10)}.pdf`);
+    } catch (err) {
+      console.error('PDF generation failed:', err);
     }
   };
 
@@ -189,11 +227,8 @@ export default function DownloadModal({ onClose, authFetch }: Props) {
             <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--cd-text-muted)', display: 'block', marginBottom: '8px' }}>Date range</label>
             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
               {(['today', '7days', '30days', 'alltime', 'custom'] as DateRange[]).map(r => (
-                <button
-                  key={r}
-                  onClick={() => setDateRange(r)}
-                  style={{ padding: '5px 12px', borderRadius: '9999px', fontSize: '12px', cursor: 'pointer', border: dateRange === r ? '0.5px solid var(--cd-accent-2)' : '0.5px solid var(--cd-border)', background: dateRange === r ? '#eff6ff' : 'var(--cd-surface-2)', color: dateRange === r ? '#2563eb' : 'var(--cd-text-muted)', fontWeight: dateRange === r ? '500' : '400' }}
-                >
+                <button key={r} onClick={() => setDateRange(r)}
+                  style={{ padding: '5px 12px', borderRadius: '9999px', fontSize: '12px', cursor: 'pointer', border: dateRange === r ? '0.5px solid var(--cd-accent-2)' : '0.5px solid var(--cd-border)', background: dateRange === r ? '#eff6ff' : 'var(--cd-surface-2)', color: dateRange === r ? '#2563eb' : 'var(--cd-text-muted)', fontWeight: dateRange === r ? '500' : '400' }}>
                   {r === 'today' ? 'Today' : r === '7days' ? '7 days' : r === '30days' ? '30 days' : r === 'alltime' ? 'All time' : 'Custom'}
                 </button>
               ))}
@@ -220,11 +255,8 @@ export default function DownloadModal({ onClose, authFetch }: Props) {
                 const selected = selectedEvents.includes(evt);
                 const isPanic = evt === 'Panic';
                 return (
-                  <button
-                    key={evt}
-                    onClick={() => toggleEvent(evt)}
-                    style={{ padding: '5px 12px', borderRadius: '9999px', fontSize: '12px', cursor: 'pointer', border: selected ? `0.5px solid ${isPanic ? '#fecdd3' : '#fde68a'}` : '0.5px solid var(--cd-border)', background: selected ? (isPanic ? '#fff1f2' : '#fef3c7') : 'var(--cd-surface-2)', color: selected ? (isPanic ? '#c8102e' : '#854F0B') : 'var(--cd-text-muted)', fontWeight: selected ? '500' : '400' }}
-                  >
+                  <button key={evt} onClick={() => toggleEvent(evt)}
+                    style={{ padding: '5px 12px', borderRadius: '9999px', fontSize: '12px', cursor: 'pointer', border: selected ? `0.5px solid ${isPanic ? '#fecdd3' : '#fde68a'}` : '0.5px solid var(--cd-border)', background: selected ? (isPanic ? '#fff1f2' : '#fef3c7') : 'var(--cd-surface-2)', color: selected ? (isPanic ? '#c8102e' : '#854F0B') : 'var(--cd-text-muted)', fontWeight: selected ? '500' : '400' }}>
                     {selected ? '✓ ' : ''}{evt}
                   </button>
                 );
@@ -236,14 +268,10 @@ export default function DownloadModal({ onClose, authFetch }: Props) {
           <div>
             <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--cd-text-muted)', display: 'block', marginBottom: '8px' }}>Vehicles <span style={{ fontWeight: '400' }}>(leave empty for all)</span></label>
             <div style={{ display: 'flex', gap: '6px', marginBottom: '6px' }}>
-              <input
-                type="text"
-                placeholder="Type reg no or asset ID..."
-                value={vehicleSearch}
+              <input type="text" placeholder="Type reg no or asset name..." value={vehicleSearch}
                 onChange={e => setVehicleSearch(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && addVehicle()}
-                style={{ flex: 1, padding: '7px 10px', border: '1px solid var(--cd-border)', borderRadius: '8px', fontSize: '12px', backgroundColor: 'var(--cd-surface-2)', color: 'var(--cd-text)', outline: 'none' }}
-              />
+                style={{ flex: 1, padding: '7px 10px', border: '1px solid var(--cd-border)', borderRadius: '8px', fontSize: '12px', backgroundColor: 'var(--cd-surface-2)', color: 'var(--cd-text)', outline: 'none' }} />
               <button onClick={addVehicle} style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--cd-border)', background: 'var(--cd-surface-2)', color: 'var(--cd-text)', cursor: 'pointer', fontSize: '12px' }}>Add</button>
             </div>
             {selectedVehicles.length > 0 && (
@@ -263,11 +291,8 @@ export default function DownloadModal({ onClose, authFetch }: Props) {
             <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--cd-text-muted)', display: 'block', marginBottom: '8px' }}>Format</label>
             <div style={{ display: 'flex', gap: '6px' }}>
               {(['csv', 'excel', 'pdf'] as Format[]).map(f => (
-                <button
-                  key={f}
-                  onClick={() => setFormat(f)}
-                  style={{ padding: '5px 16px', borderRadius: '9999px', fontSize: '12px', cursor: 'pointer', border: format === f ? '0.5px solid var(--cd-accent-2)' : '0.5px solid var(--cd-border)', background: format === f ? '#eff6ff' : 'var(--cd-surface-2)', color: format === f ? '#2563eb' : 'var(--cd-text-muted)', fontWeight: format === f ? '500' : '400', textTransform: 'uppercase' }}
-                >
+                <button key={f} onClick={() => setFormat(f)}
+                  style={{ padding: '5px 16px', borderRadius: '9999px', fontSize: '12px', cursor: 'pointer', border: format === f ? '0.5px solid var(--cd-accent-2)' : '0.5px solid var(--cd-border)', background: format === f ? '#eff6ff' : 'var(--cd-surface-2)', color: format === f ? '#2563eb' : 'var(--cd-text-muted)', fontWeight: format === f ? '500' : '400', textTransform: 'uppercase' }}>
                   {f}
                 </button>
               ))}
@@ -275,11 +300,8 @@ export default function DownloadModal({ onClose, authFetch }: Props) {
           </div>
 
           {/* Download Button */}
-          <button
-            onClick={handleDownload}
-            disabled={downloading || selectedEvents.length === 0}
-            style={{ width: '100%', padding: '11px', background: downloading || selectedEvents.length === 0 ? 'var(--cd-surface-2)' : '#c8102e', color: downloading || selectedEvents.length === 0 ? 'var(--cd-text-muted)' : '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: downloading || selectedEvents.length === 0 ? 'not-allowed' : 'pointer', marginTop: '4px' }}
-          >
+          <button onClick={handleDownload} disabled={downloading || selectedEvents.length === 0}
+            style={{ width: '100%', padding: '11px', background: downloading || selectedEvents.length === 0 ? 'var(--cd-surface-2)' : '#c8102e', color: downloading || selectedEvents.length === 0 ? 'var(--cd-text-muted)' : '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: downloading || selectedEvents.length === 0 ? 'not-allowed' : 'pointer', marginTop: '4px' }}>
             {downloading ? 'Preparing...' : 'Download Report'}
           </button>
 

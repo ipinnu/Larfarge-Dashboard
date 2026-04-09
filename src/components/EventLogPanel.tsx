@@ -7,6 +7,9 @@ interface LogEntry {
   regNo?: string;
   assetName?: string;
   transporter?: string;
+  driverName?: string;
+  driverPhone?: string;
+  address?: string;
   eventId: string;
   label?: string;
   eventTime: string;
@@ -23,7 +26,8 @@ interface Props {
 
 type DateRange = 'today' | '7days' | '30days' | 'alltime' | 'custom';
 
-const EVENT_FILTERS = ['All', 'Panic', 'Harsh Braking', 'Harsh Acceleration', 'Overspeeding', 'Overspeeding Tiered', 'Harsh Cornering'];
+const EVENT_FILTERS = ['All', 'Panic', 'Harsh Braking', 'Harsh Acceleration', 'Overspeeding', 'Overspeed Tiered', 'Harsh Cornering'];
+const HIDDEN_LABELS = ['Possible Power Tamper', 'Battery Disconnection', 'Battery Disconnected', 'Front Panel Tamper', 'Back Panel Tamper', 'No Blue Key'];
 
 export default function EventLogPanel({ open, onClose, authFetch, isMobile }: Props) {
   const [entries, setEntries] = useState<LogEntry[]>([]);
@@ -78,6 +82,7 @@ export default function EventLogPanel({ open, onClose, authFetch, isMobile }: Pr
 
   const filtered = entries.filter(e => {
     const label = e.label || 'Panic';
+    if (HIDDEN_LABELS.includes(label)) return false;
     const matchesFilter = activeFilter === 'All' || label === activeFilter || (activeFilter === 'Panic' && e.type === 'panic');
     const matchesSearch = searchTerm === '' ||
       (e.regNo && e.regNo !== 'N/A' && e.regNo.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -92,20 +97,20 @@ export default function EventLogPanel({ open, onClose, authFetch, isMobile }: Pr
     } catch { return iso; }
   };
 
-    const panelStyle: React.CSSProperties = isMobile ? {
-        position: 'fixed', inset: 0, zIndex: 1001,
-        backgroundColor: 'var(--cd-surface)',
-        display: 'flex', flexDirection: 'column',
-    } : {
-        position: 'fixed', top: 0, right: 0, bottom: 0,
-        width: expanded ? '640px' : '380px',
-        zIndex: 1001,
-        backgroundColor: 'var(--cd-surface)',
-        borderLeft: '1px solid var(--cd-border)',
-        boxShadow: '-4px 0 24px rgba(0,0,0,0.12)',
-        display: 'flex', flexDirection: 'column',
-        transition: 'width 0.2s ease',
-    };
+  const panelStyle: React.CSSProperties = isMobile ? {
+    position: 'fixed', inset: 0, zIndex: 1001,
+    backgroundColor: 'var(--cd-surface)',
+    display: 'flex', flexDirection: 'column',
+  } : {
+    position: 'fixed', top: 0, right: 0, bottom: 0,
+    width: expanded ? '640px' : '380px',
+    zIndex: 1001,
+    backgroundColor: 'var(--cd-surface)',
+    borderLeft: '1px solid var(--cd-border)',
+    boxShadow: '-4px 0 24px rgba(0,0,0,0.12)',
+    display: 'flex', flexDirection: 'column',
+    transition: 'width 0.2s ease',
+  };
 
   return (
     <>
@@ -225,8 +230,11 @@ export default function EventLogPanel({ open, onClose, authFetch, isMobile }: Pr
           ) : filtered.map((entry, i) => {
             const isPanic = entry.type === 'panic';
             const label = entry.label || 'Panic';
-            const address = entry.rawEvent?.Position?.FormattedAddress || '';
+            const address = entry.address && entry.address !== 'null'
+              ? entry.address
+              : entry.rawEvent?.Position?.FormattedAddress || '';
             const displayName = entry.regNo && entry.regNo !== 'N/A' ? entry.regNo : entry.assetId;
+            const hasDriver = entry.driverName && entry.driverName !== 'N/A' && entry.driverName !== 'No Driver Assigned';
             return (
               <div
                 key={`${entry.eventId}-${i}`}
@@ -251,8 +259,13 @@ export default function EventLogPanel({ open, onClose, authFetch, isMobile }: Pr
                   </div>
                 )}
                 {entry.transporter && entry.transporter !== 'N/A' && (
-                  <div style={{ fontSize: '11px', color: 'var(--cd-text-muted)', marginBottom: address ? '2px' : '0' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--cd-text-muted)', marginBottom: '2px' }}>
                     {entry.transporter}
+                  </div>
+                )}
+                {hasDriver && (
+                  <div style={{ fontSize: '11px', color: 'var(--cd-text-muted)', marginBottom: address ? '2px' : '0' }}>
+                    👤 {entry.driverName}{entry.driverPhone && entry.driverPhone !== 'N/A' ? ` · ${entry.driverPhone}` : ''}
                   </div>
                 )}
                 {address && (

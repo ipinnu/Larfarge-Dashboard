@@ -6,7 +6,7 @@ import MapView from './components/MapView';
 import EventLogPanel from './components/EventLogPanel';
 import DownloadModal from './components/DownloadModal';
 
-type StatusFilter = 'All' | 'Moving' | 'Idle' | 'Stationary' | 'Parked' | 'Inactive' | 'Offline';
+type StatusFilter = 'All' | 'Moving' | 'Idle' | 'Stationary' | 'Parked' | 'Offline' | 'Inactive';
 
 interface Metadata {
   totalVehicles: number;
@@ -26,8 +26,8 @@ const statConfig: { key: keyof Omit<Metadata, 'lastUpdate'>; label: string; filt
   { key: 'idle', label: 'Idle', filter: 'Idle', color: '#d97706', bg: '#fef3c7', border: '#fde68a', tooltip: 'Vehicle is moving slowly between 3 and 5 km/h, or stopped within the last 5 minutes' },
   { key: 'stationary', label: 'Stationary', filter: 'Stationary', color: '#0d9488', bg: '#f0fdfa', border: '#99f6e4', tooltip: 'Vehicle has been stationary for less than 1 hour' },
   { key: 'parked', label: 'Parked', filter: 'Parked', color: '#ea580c', bg: '#fff7ed', border: '#fed7aa', tooltip: 'Vehicle has been stationary for between 1 and 24 hours' },
-  { key: 'inactive', label: 'Inactive', filter: 'Inactive', color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe', tooltip: 'Vehicle has not moved in over 24 hours' },
-  //{ key: 'offline', label: 'Offline', filter: 'Offline', color: '#64748b', bg: '#f1f5f9', border: '#e2e8f0', tooltip: 'No GPS data has been received for this vehicle' },
+  { key: 'offline', label: 'Offline', filter: 'Offline', color: '#64748b', bg: '#f1f5f9', border: '#e2e8f0', tooltip: 'Vehicle has not moved in over 24 hours' },
+  { key: 'inactive', label: 'Inactive', filter: 'Inactive', color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe', tooltip: 'Vehicle has not moved in over 30 days' },
   { key: 'panic', label: 'Panic', filter: 'All', color: '#c8102e', bg: '#fff1f2', border: '#fecdd3', tooltip: 'Vehicle has an active panic alert' },
 ];
 
@@ -269,7 +269,7 @@ function DashboardContent() {
                 <img src="/cnl-logo.png" alt="CNL Logo" className="cd-logo" />
               </div>
               <div>
-                <h1 className="cd-title text-gray-900 mb-1" style={{ color: 'var(--cd-text)' }}>CNL Dashboard</h1>
+                <h1 className="cd-title text-gray-900 mb-1" style={{ color: 'var(--cd-text)' }}>CNL Tracking Dashboard</h1>
                 <p className="cd-subtitle text-gray-600" style={{ color: 'var(--cd-text-muted)' }}>
                   Track and manage your team, fleet and operations.
                 </p>

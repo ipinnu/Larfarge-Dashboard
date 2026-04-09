@@ -21,11 +21,13 @@ const CHEVRON_ORG_ID = process.env.CHEVRON_ORG_ID;
 
 const POLL_INTERVAL_MS = 10 * 1000;
 const MAX_RUNS = 1200;
+const DRIVER_REFRESH_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // once a week
 
 let runCount = 0;
 let inFlight = null;
 let pollingInterval = null;
 let pollingMaxRuns = MAX_RUNS;
+let lastDriverFetch = 0;
 
 function getCurrentSinceToken() {
   const now = new Date();
@@ -44,12 +46,123 @@ const WARNING_EVENT_TYPES = {
   '4750800303282680186': 'Harsh Braking',
   '6454149451280645233': 'Harsh Acceleration',
   '-3890646499157906515': 'Overspeeding',
-  '-4596269900191457380': 'Overspeeding Tiered',
+  '-4596269900191457380': 'Overspeed Tiered',
   '4291175374538259638': 'Harsh Cornering',
 };
 
 const triggeredEvents = new Map();
 const triggeredWarningEvents = new Map();
+
+// In-memory driver lookup — populated from drivers.json
+let driverLookup = new Map();
+
+function loadDriverLookup() {
+  try {
+    const driversPath = path.join(process.cwd(), 'public', 'drivers.json');
+    if (fs.existsSync(driversPath)) {
+      const drivers = JSON.parse(fs.readFileSync(driversPath, 'utf8'));
+      driverLookup.clear();
+      drivers.forEach(d => {
+        driverLookup.set(d.DriverId?.toString(), {
+          name: d.Name || 'N/A',
+          phone: d.MobileNumber || 'N/A',
+        });
+      });
+      console.log(`👥 Driver lookup loaded — ${driverLookup.size} drivers`);
+    }
+  } catch {
+    console.log('⚠️ Could not load drivers.json — driver details will show N/A');
+  }
+}
+
+async function fetchAndCacheDrivers(token) {
+  try {
+    console.log('👥 Fetching drivers from MiX...');
+    const response = await fetch(`${API_BASE}/drivers/organisation/${CHEVRON_ORG_ID}`, {
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Accept": "application/json",
+      },
+    });
+
+    if (response.status === 401) {
+      console.log('⚠️ Token rejected by drivers endpoint');
+      return;
+    }
+    if (!response.ok) {
+      console.log(`⚠️ Drivers endpoint returned ${response.status}`);
+      return;
+    }
+
+    const text = await response.text();
+    const safe = text.replace(/:\s*(-?\d{16,})/g, ': "$1"');
+    const drivers = JSON.parse(safe);
+
+    const driversPath = path.join(process.cwd(), 'public', 'drivers.json');
+    fs.writeFileSync(driversPath, JSON.stringify(drivers, null, 2));
+
+    driverLookup.clear();
+    drivers.forEach(d => {
+      driverLookup.set(d.DriverId?.toString(), {
+        name: d.Name || 'N/A',
+        phone: d.MobileNumber || 'N/A',
+      });
+    });
+
+    lastDriverFetch = Date.now();
+    console.log(`👥 Drivers cached — ${drivers.length} drivers saved to drivers.json`);
+  } catch (err) {
+    console.log(`⚠️ Driver fetch failed: ${err.message}`);
+  }
+}
+
+function getDriverInfo(driverId) {
+  if (!driverId) return { name: 'N/A', phone: 'N/A' };
+  const id = driverId.toString();
+  if (id === '-4331286019934761070') return { name: 'No Driver Assigned', phone: 'N/A' };
+  return driverLookup.get(id) || { name: 'N/A', phone: 'N/A' };
+}
+
+async function reverseGeocode(lat, lon) {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`,
+      {
+        headers: {
+          'User-Agent': 'BPL-CNL-FleetDashboard/1.0',
+          'Accept-Language': 'en'
+        }
+      }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.display_name || null;
+  } catch {
+    return null;
+  }
+}
+
+async function enrichEntryWithAddress(logPath, eventId, lat, lon) {
+  try {
+    const address = await reverseGeocode(lat, lon);
+    if (!address) return;
+    const content = fs.readFileSync(logPath, 'utf8');
+    const lines = content.trim().split('\n').filter(Boolean);
+    const updated = lines.map(line => {
+      try {
+        const entry = JSON.parse(line);
+        if (entry.eventId?.toString() === eventId?.toString()) {
+          entry.address = address;
+          return JSON.stringify(entry);
+        }
+        return line;
+      } catch { return line; }
+    });
+    fs.writeFileSync(logPath, updated.join('\n') + '\n');
+  } catch {
+    // silent fail — address enrichment is best effort
+  }
+}
 
 function cleanStaleWarnings() {
   const cutoff = Date.now() - 60_000;
@@ -267,16 +380,31 @@ async function getLatestActiveEvents(token) {
       console.log(`🔎 Active Panic - AssetId: ${e.AssetId} | EventTime: ${e.EventDateTime} | ReceivedAt: ${e.ReceivedDateTime}`);
     });
     const logPath = path.join(process.cwd(), 'panic.log');
-    const logEntries = panicEvents.map(e => JSON.stringify({
-      timestamp: new Date().toISOString(),
-      assetId: e.AssetId,
-      eventId: e.EventId,
-      eventTime: e.EventDateTime,
-      receivedAt: e.ReceivedDateTime,
-      rawEvent: e
-    })).join('\n') + '\n';
+    const logEntries = panicEvents.map(e => {
+      const driver = getDriverInfo(e.DriverId);
+      const formattedAddress = e.Position?.FormattedAddress;
+      return JSON.stringify({
+        timestamp: new Date().toISOString(),
+        assetId: e.AssetId,
+        driverId: e.DriverId,
+        driverName: driver.name,
+        driverPhone: driver.phone,
+        eventId: e.EventId,
+        eventTime: e.EventDateTime,
+        receivedAt: e.ReceivedDateTime,
+        address: formattedAddress || null,
+        rawEvent: e
+      });
+    }).join('\n') + '\n';
     fs.appendFileSync(logPath, logEntries);
     console.log(`📝 Panic logged to panic.log`);
+
+    // Fire and forget geocoding for entries missing address
+    panicEvents.forEach(e => {
+      if (!e.Position?.FormattedAddress && e.Position?.Latitude && e.Position?.Longitude) {
+        enrichEntryWithAddress(logPath, e.EventId, e.Position.Latitude, e.Position.Longitude);
+      }
+    });
   }
 
   // Handle warning events
@@ -284,18 +412,33 @@ async function getLatestActiveEvents(token) {
   if (warningEvents.length > 0) {
     console.log(`⚠️ Warning events found: ${warningEvents.length}`);
     const eventsLogPath = path.join(process.cwd(), 'events.log');
-    const logEntries = warningEvents.map(e => JSON.stringify({
-      timestamp: new Date().toISOString(),
-      assetId: e.AssetId,
-      eventId: e.EventId,
-      eventType: e.EventTypeId,
-      label: WARNING_EVENT_TYPES[e.EventTypeId],
-      eventTime: e.EventDateTime,
-      receivedAt: e.ReceivedDateTime,
-      rawEvent: e
-    })).join('\n') + '\n';
+    const logEntries = warningEvents.map(e => {
+      const driver = getDriverInfo(e.DriverId);
+      const formattedAddress = e.Position?.FormattedAddress;
+      return JSON.stringify({
+        timestamp: new Date().toISOString(),
+        assetId: e.AssetId,
+        driverId: e.DriverId,
+        driverName: driver.name,
+        driverPhone: driver.phone,
+        eventId: e.EventId,
+        eventType: e.EventTypeId,
+        label: WARNING_EVENT_TYPES[e.EventTypeId],
+        eventTime: e.EventDateTime,
+        receivedAt: e.ReceivedDateTime,
+        address: formattedAddress || null,
+        rawEvent: e
+      });
+    }).join('\n') + '\n';
     fs.appendFileSync(eventsLogPath, logEntries);
     console.log(`📝 Warning logged to events.log`);
+
+    // Fire and forget geocoding for entries missing address
+    warningEvents.forEach(e => {
+      if (!e.Position?.FormattedAddress && e.Position?.Latitude && e.Position?.Longitude) {
+        enrichEntryWithAddress(eventsLogPath, e.EventId, e.Position.Latitude, e.Position.Longitude);
+      }
+    });
 
     warningEvents.forEach(e => {
       const assetId = e.AssetId?.toString();
@@ -350,6 +493,8 @@ function mergeData(vehicles, positions) {
           status = 'Stationary';
         } else if (age < 24 * 60 * 60 * 1000) {
           status = 'Parked';
+        } else if (age < 30 * 24 * 60 * 60 * 1000) {
+          status = 'Offline';
         } else {
           status = 'Inactive';
         }
@@ -395,6 +540,11 @@ export async function pollOnce() {
     try {
       const token = await authenticate();
       console.log("✅ Authenticated");
+
+      // Fetch drivers on first run or once a week
+      if (driverLookup.size === 0 || Date.now() - lastDriverFetch > DRIVER_REFRESH_INTERVAL_MS) {
+        await fetchAndCacheDrivers(token);
+      }
 
       const [vehicles, latestActiveEvents, positions] = await Promise.all([
         getVehicles(token),
@@ -488,6 +638,9 @@ export function startPolling(options = {}) {
   }
   const { intervalMs = POLL_INTERVAL_MS, maxRuns = MAX_RUNS } = options;
   pollingMaxRuns = maxRuns ?? null;
+
+  // Load driver lookup from existing drivers.json if available
+  loadDriverLookup();
 
   console.log("🚀 MiX Auto-Polling Started");
   console.log("=".repeat(70));
