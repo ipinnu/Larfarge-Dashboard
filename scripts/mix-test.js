@@ -21,7 +21,7 @@ const CHEVRON_ORG_ID = process.env.CHEVRON_ORG_ID;
 
 const POLL_INTERVAL_MS = 10 * 1000;
 const MAX_RUNS = 1200;
-const DRIVER_REFRESH_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // once a week
+const DRIVER_REFRESH_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
 
 let runCount = 0;
 let inFlight = null;
@@ -50,10 +50,19 @@ const WARNING_EVENT_TYPES = {
   '4291175374538259638': 'Harsh Cornering',
 };
 
+// Captured silently — stored in events.log but never shown in UI
+const SILENT_EVENT_TYPES = {
+  '1817013705984649276': 'Battery Disconnection',
+  '7032263543197595458': 'Battery Disconnected',
+  '7649064213173525415': 'Possible Power Tamper',
+  '1265128955935347562': 'Back Panel Tamper',
+  '5772499989462844542': 'Front Panel Tamper',
+  '-7466616309983624674': 'No Blue Key',
+};
+
 const triggeredEvents = new Map();
 const triggeredWarningEvents = new Map();
 
-// In-memory driver lookup — populated from drivers.json
 let driverLookup = new Map();
 
 function loadDriverLookup() {
@@ -160,7 +169,7 @@ async function enrichEntryWithAddress(logPath, eventId, lat, lon) {
     });
     fs.writeFileSync(logPath, updated.join('\n') + '\n');
   } catch {
-    // silent fail — address enrichment is best effort
+    // silent fail
   }
 }
 
@@ -226,7 +235,6 @@ async function authenticate() {
     cachedToken = null;
     tokenExpiresAt = 0;
     console.log("❌ Authentication failed - got HTML instead of JSON");
-    console.log("   Server might be down or network issue");
     throw new Error("Authentication server returned HTML, not JSON");
   }
 
@@ -283,16 +291,6 @@ async function getLatestPositions(token) {
   return JSON.parse(safe);
 }
 
-// ============================================================
-// HISTORY EVENTS ENDPOINT — COMMENTED OUT
-// Reason: Causes ghost panics. MiX can delay publishing events
-// by hours, so a panic from before app startup can arrive after
-// startup and bypass the sinceToken filter. Active events
-// pipeline (getLatestActiveEvents) catches panics faster and
-// more reliably. Re-enable if active events ever proves unreliable.
-// ============================================================
-// async function getActiveEvents(token) { ... }
-
 async function getActivePanicEvents(token) {
   const endpoint = `${API_BASE}/activeevents/groups/createdsince/organisation/${CHEVRON_ORG_ID}/sincetoken/NEW/quantity/1000`;
 
@@ -312,9 +310,7 @@ async function getActivePanicEvents(token) {
     console.log('⚠️ Token rejected by panic events endpoint, will re-authenticate next poll');
     return [];
   }
-  if (response.status === 204 || !response.ok) {
-    return [];
-  }
+  if (response.status === 204 || !response.ok) return [];
 
   const text = await response.text();
   const safe = text.replace(/:\s*(-?\d{16,})/g, ': "$1"');
@@ -340,9 +336,7 @@ async function getLatestActiveEvents(token) {
     console.log('⚠️ Token rejected by latest active events endpoint, will re-authenticate next poll');
     return [];
   }
-  if (response.status === 204 || !response.ok) {
-    return [];
-  }
+  if (response.status === 204 || !response.ok) return [];
 
   const newToken = response.headers.get('GetSinceToken');
   const text = await response.text();
@@ -357,7 +351,7 @@ async function getLatestActiveEvents(token) {
       activeParseRetryDone = true;
       return [];
     }
-    console.log('⚠️ Active events parse failed again, advancing activeSinceToken and moving on. Events may have been lost.');
+    console.log('⚠️ Active events parse failed again, advancing activeSinceToken and moving on.');
     activeParseRetryDone = false;
     if (newToken) {
       activeSinceToken = newToken;
@@ -372,12 +366,14 @@ async function getLatestActiveEvents(token) {
     console.log(`📌 Updated activeSinceToken: ${activeSinceToken}`);
   }
 
+  const eventsLogPath = path.join(process.cwd(), 'events.log');
+
   // Handle panic events
   const panicEvents = parsed.filter(e => e.EventTypeId === PANIC_EVENT_TYPE_ID);
   if (panicEvents.length > 0) {
     console.log(`🔎 Active Panic found: ${panicEvents.length}`);
     panicEvents.forEach(e => {
-      console.log(`🔎 Active Panic - AssetId: ${e.AssetId} | EventTime: ${e.EventDateTime} | ReceivedAt: ${e.ReceivedDateTime}`);
+      console.log(`🔎 Active Panic - AssetId: ${e.AssetId} | EventTime: ${e.EventDateTime}`);
     });
     const logPath = path.join(process.cwd(), 'panic.log');
     const logEntries = panicEvents.map(e => {
@@ -399,7 +395,6 @@ async function getLatestActiveEvents(token) {
     fs.appendFileSync(logPath, logEntries);
     console.log(`📝 Panic logged to panic.log`);
 
-    // Fire and forget geocoding for entries missing address
     panicEvents.forEach(e => {
       if (!e.Position?.FormattedAddress && e.Position?.Latitude && e.Position?.Longitude) {
         enrichEntryWithAddress(logPath, e.EventId, e.Position.Latitude, e.Position.Longitude);
@@ -407,11 +402,10 @@ async function getLatestActiveEvents(token) {
     });
   }
 
-  // Handle warning events
+  // Handle warning events — shown in UI
   const warningEvents = parsed.filter(e => WARNING_EVENT_TYPES[e.EventTypeId]);
   if (warningEvents.length > 0) {
     console.log(`⚠️ Warning events found: ${warningEvents.length}`);
-    const eventsLogPath = path.join(process.cwd(), 'events.log');
     const logEntries = warningEvents.map(e => {
       const driver = getDriverInfo(e.DriverId);
       const formattedAddress = e.Position?.FormattedAddress;
@@ -433,7 +427,6 @@ async function getLatestActiveEvents(token) {
     fs.appendFileSync(eventsLogPath, logEntries);
     console.log(`📝 Warning logged to events.log`);
 
-    // Fire and forget geocoding for entries missing address
     warningEvents.forEach(e => {
       if (!e.Position?.FormattedAddress && e.Position?.Latitude && e.Position?.Longitude) {
         enrichEntryWithAddress(eventsLogPath, e.EventId, e.Position.Latitude, e.Position.Longitude);
@@ -458,6 +451,37 @@ async function getLatestActiveEvents(token) {
             eventTime: e.EventDateTime,
           });
         }
+      }
+    });
+  }
+
+  // Handle silent events — stored only, never shown in UI
+  const silentEvents = parsed.filter(e => SILENT_EVENT_TYPES[e.EventTypeId]);
+  if (silentEvents.length > 0) {
+    console.log(`🔇 Silent events captured: ${silentEvents.length}`);
+    const logEntries = silentEvents.map(e => {
+      const driver = getDriverInfo(e.DriverId);
+      const formattedAddress = e.Position?.FormattedAddress;
+      return JSON.stringify({
+        timestamp: new Date().toISOString(),
+        assetId: e.AssetId,
+        driverId: e.DriverId,
+        driverName: driver.name,
+        driverPhone: driver.phone,
+        eventId: e.EventId,
+        eventType: e.EventTypeId,
+        label: SILENT_EVENT_TYPES[e.EventTypeId],
+        eventTime: e.EventDateTime,
+        receivedAt: e.ReceivedDateTime,
+        address: formattedAddress || null,
+        rawEvent: e
+      });
+    }).join('\n') + '\n';
+    fs.appendFileSync(eventsLogPath, logEntries);
+
+    silentEvents.forEach(e => {
+      if (!e.Position?.FormattedAddress && e.Position?.Latitude && e.Position?.Longitude) {
+        enrichEntryWithAddress(eventsLogPath, e.EventId, e.Position.Latitude, e.Position.Longitude);
       }
     });
   }
@@ -541,7 +565,6 @@ export async function pollOnce() {
       const token = await authenticate();
       console.log("✅ Authenticated");
 
-      // Fetch drivers on first run or once a week
       if (driverLookup.size === 0 || Date.now() - lastDriverFetch > DRIVER_REFRESH_INTERVAL_MS) {
         await fetchAndCacheDrivers(token);
       }
@@ -639,7 +662,6 @@ export function startPolling(options = {}) {
   const { intervalMs = POLL_INTERVAL_MS, maxRuns = MAX_RUNS } = options;
   pollingMaxRuns = maxRuns ?? null;
 
-  // Load driver lookup from existing drivers.json if available
   loadDriverLookup();
 
   console.log("🚀 MiX Auto-Polling Started");

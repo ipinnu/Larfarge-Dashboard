@@ -1,10 +1,11 @@
 import { SignedIn, SignedOut, SignIn, useClerk } from "@clerk/clerk-react";
 import { useEffect, useState, useRef } from 'react';
-import { Moon, Sun, Power, RotateCcw, ScrollText, Download, Map, Table, Volume2 } from 'lucide-react';
+import { Moon, Sun, Power, RotateCcw, ScrollText, Download, Map, Table, Volume2, ShieldAlert } from 'lucide-react';
 import AnomaliesTable from './components/AnomaliesTable';
 import MapView from './components/MapView';
 import EventLogPanel from './components/EventLogPanel';
 import DownloadModal from './components/DownloadModal';
+import DriverRiskPanel from './components/DriverRiskPanel';
 
 type StatusFilter = 'All' | 'Moving' | 'Idle' | 'Stationary' | 'Parked' | 'Offline' | 'Inactive';
 
@@ -51,6 +52,7 @@ function DashboardContent() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showLogPanel, setShowLogPanel] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const [showDriverRiskPanel, setShowDriverRiskPanel] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'map'>('table');
   const [isMobile, setIsMobile] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(true);
@@ -262,6 +264,14 @@ function DashboardContent() {
             />
           )}
 
+          {/* Driver Risk Panel */}
+            <DriverRiskPanel
+              open={showDriverRiskPanel}
+              onClose={() => setShowDriverRiskPanel(false)}
+              authFetch={authFetch}
+              isMobile={isMobile}
+            />
+
           {/* Header */}
           <div className="cd-header mb-8">
             <div className="flex items-center gap-4">
@@ -280,14 +290,17 @@ function DashboardContent() {
               <button className="cd-iconbtn p-2 rounded-lg transition-colors" onClick={() => setTheme(prev => (prev === 'dark' ? 'light' : 'dark'))} aria-label="Toggle dark mode">
                 {theme === 'dark' ? <Sun className="w-5 h-5 text-gray-600" /> : <Moon className="w-5 h-5 text-gray-600" />}
               </button>
+              <button className="cd-iconbtn p-2 rounded-lg transition-colors" onClick={() => setViewMode(prev => prev === 'table' ? 'map' : 'table')} aria-label="Toggle map view" title={viewMode === 'table' ? 'Switch to Map View' : 'Switch to Table View'}>
+                {viewMode === 'table' ? <Map className="w-5 h-5 text-gray-600" /> : <Table className="w-5 h-5 text-gray-600" />}
+              </button>
               <button className="cd-iconbtn p-2 rounded-lg transition-colors" onClick={() => setShowLogPanel(true)} aria-label="Event log" title="Event Log">
                 <ScrollText className="w-5 h-5 text-gray-600" />
               </button>
               <button className="cd-iconbtn p-2 rounded-lg transition-colors" onClick={() => setShowDownloadModal(true)} aria-label="Download report" title="Download Report">
                 <Download className="w-5 h-5 text-gray-600" />
               </button>
-              <button className="cd-iconbtn p-2 rounded-lg transition-colors" onClick={() => setViewMode(prev => prev === 'table' ? 'map' : 'table')} aria-label="Toggle map view" title={viewMode === 'table' ? 'Switch to Map View' : 'Switch to Table View'}>
-                {viewMode === 'table' ? <Map className="w-5 h-5 text-gray-600" /> : <Table className="w-5 h-5 text-gray-600" />}
+              <button className="cd-iconbtn p-2 rounded-lg transition-colors" onClick={() => setShowDriverRiskPanel(true)} aria-label="Driver risk" title="Driver Risk">
+                <ShieldAlert className="w-5 h-5 text-gray-600" />
               </button>
               <button className="cd-iconbtn p-2 rounded-lg transition-colors" onClick={() => setShowResetConfirm(true)} aria-label="Reset dashboard" title="Reset Dashboard">
                 <RotateCcw className="w-5 h-5 text-gray-600" />

@@ -98,7 +98,8 @@ export default function DownloadModal({ onClose, authFetch }: Props) {
           selectedVehicles.some(v =>
             (e.regNo && e.regNo.toUpperCase().includes(v)) ||
             (e.assetName && e.assetName.toUpperCase().includes(v)) ||
-            (e.assetId && e.assetId.includes(v))
+            (e.assetId && e.assetId.includes(v)) ||
+            (e.driverName && e.driverName.toUpperCase().includes(v))
           );
         return matchesEvent && matchesVehicle && getDateFilter(e);
       });
@@ -266,9 +267,9 @@ const downloadExcel = (entries: any[]) => {
 
           {/* Vehicles */}
           <div>
-            <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--cd-text-muted)', display: 'block', marginBottom: '8px' }}>Vehicles <span style={{ fontWeight: '400' }}>(leave empty for all)</span></label>
+            <label style={{ fontSize: '12px', fontWeight: '500', color: 'var(--cd-text-muted)', display: 'block', marginBottom: '8px' }}>Filter <span style={{ fontWeight: '400' }}>(leave empty for all)</span></label>
             <div style={{ display: 'flex', gap: '6px', marginBottom: '6px' }}>
-              <input type="text" placeholder="Type reg no or asset name..." value={vehicleSearch}
+              <input type="text" placeholder="Type reg no, asset name, or driver..." value={vehicleSearch}
                 onChange={e => setVehicleSearch(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && addVehicle()}
                 style={{ flex: 1, padding: '7px 10px', border: '1px solid var(--cd-border)', borderRadius: '8px', fontSize: '12px', backgroundColor: 'var(--cd-surface-2)', color: 'var(--cd-text)', outline: 'none' }} />

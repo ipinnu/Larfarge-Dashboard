@@ -37,7 +37,6 @@ export default function EventLogPanel({ open, onClose, authFetch, isMobile }: Pr
   const [dateRange, setDateRange] = useState<DateRange>('today');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
-  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -85,9 +84,10 @@ export default function EventLogPanel({ open, onClose, authFetch, isMobile }: Pr
     if (HIDDEN_LABELS.includes(label)) return false;
     const matchesFilter = activeFilter === 'All' || label === activeFilter || (activeFilter === 'Panic' && e.type === 'panic');
     const matchesSearch = searchTerm === '' ||
-      (e.regNo && e.regNo !== 'N/A' && e.regNo.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (e.assetName && e.assetName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (e.assetId && e.assetId.toLowerCase().includes(searchTerm.toLowerCase()));
+    (e.regNo && e.regNo !== 'N/A' && e.regNo.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (e.assetName && e.assetName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (e.assetId && e.assetId.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (e.driverName && e.driverName !== 'N/A' && e.driverName.toLowerCase().includes(searchTerm.toLowerCase()));
     return matchesFilter && matchesSearch && getDateFilter(e);
   });
 
@@ -103,7 +103,8 @@ export default function EventLogPanel({ open, onClose, authFetch, isMobile }: Pr
     display: 'flex', flexDirection: 'column',
   } : {
     position: 'fixed', top: 0, right: 0, bottom: 0,
-    width: expanded ? '640px' : '380px',
+    width: '60%',
+    minWidth: '480px',
     zIndex: 1001,
     backgroundColor: 'var(--cd-surface)',
     borderLeft: '1px solid var(--cd-border)',
@@ -122,25 +123,6 @@ export default function EventLogPanel({ open, onClose, authFetch, isMobile }: Pr
         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--cd-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
           <span style={{ fontSize: '16px', fontWeight: '600', color: 'var(--cd-text)' }}>Event Log</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {!isMobile && (
-              <button
-                onClick={() => setExpanded(prev => !prev)}
-                title={expanded ? 'Collapse panel' : 'Expand panel'}
-                style={{ background: 'none', border: '0.5px solid var(--cd-border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--cd-text-muted)', padding: '4px 8px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}
-              >
-                {expanded ? (
-                  <>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
-                    Collapse
-                  </>
-                ) : (
-                  <>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
-                    Expand
-                  </>
-                )}
-              </button>
-            )}
             <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--cd-text-muted)', padding: '4px' }}>
               <X style={{ width: '20px', height: '20px' }} />
             </button>
@@ -188,7 +170,7 @@ export default function EventLogPanel({ open, onClose, authFetch, isMobile }: Pr
             <Search style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', width: '14px', height: '14px', color: 'var(--cd-text-soft)' }} />
             <input
               type="text"
-              placeholder="Search reg no or asset name..."
+              placeholder="Search reg no, asset name, or driver..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               style={{ width: '100%', paddingLeft: '32px', paddingRight: '12px', paddingTop: '7px', paddingBottom: '7px', border: '1px solid var(--cd-border)', borderRadius: '8px', fontSize: '13px', outline: 'none', backgroundColor: 'var(--cd-surface-2)', color: 'var(--cd-text)' }}
