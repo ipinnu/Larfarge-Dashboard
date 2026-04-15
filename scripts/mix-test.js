@@ -22,12 +22,14 @@ const CHEVRON_ORG_ID = process.env.CHEVRON_ORG_ID;
 const POLL_INTERVAL_MS = 10 * 1000;
 const MAX_RUNS = 1200;
 const DRIVER_REFRESH_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
+const VEHICLE_REFRESH_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
 
 let runCount = 0;
 let inFlight = null;
 let pollingInterval = null;
 let pollingMaxRuns = MAX_RUNS;
 let lastDriverFetch = 0;
+let lastVehicleFetch = 0;
 
 function getCurrentSinceToken() {
   const now = new Date();
@@ -50,20 +52,11 @@ const WARNING_EVENT_TYPES = {
   '4291175374538259638': 'Harsh Cornering',
 };
 
-// Captured silently — stored in events.log but never shown in UI
-const SILENT_EVENT_TYPES = {
-  '1817013705984649276': 'Battery Disconnection',
-  '7032263543197595458': 'Battery Disconnected',
-  '7649064213173525415': 'Possible Power Tamper',
-  '1265128955935347562': 'Back Panel Tamper',
-  '5772499989462844542': 'Front Panel Tamper',
-  '-7466616309983624674': 'No Blue Key',
-};
-
 const triggeredEvents = new Map();
 const triggeredWarningEvents = new Map();
 
 let driverLookup = new Map();
+let vehicleLookup = new Map();
 
 function loadDriverLookup() {
   try {
@@ -82,6 +75,26 @@ function loadDriverLookup() {
   } catch {
     console.log('⚠️ Could not load drivers.json — driver details will show N/A');
   }
+}
+
+function loadVehicleLookup() {
+  try {
+    const vehiclesPath = path.join(process.cwd(), 'public', 'vehicles.json');
+    if (fs.existsSync(vehiclesPath)) {
+      const text = fs.readFileSync(vehiclesPath, 'utf8');
+      const safe = text.replace(/:\s*(-?\d{16,})/g, ': "$1"');
+      const vehicles = JSON.parse(safe);
+      vehicleLookup.clear();
+      vehicles.forEach(v => {
+        vehicleLookup.set(v.AssetId?.toString(), v);
+      });
+      console.log(`🚗 Vehicle lookup loaded — ${vehicleLookup.size} vehicles`);
+      return true;
+    }
+  } catch {
+    console.log('⚠️ Could not load vehicles.json — will fetch from MiX');
+  }
+  return false;
 }
 
 async function fetchAndCacheDrivers(token) {
@@ -122,6 +135,44 @@ async function fetchAndCacheDrivers(token) {
     console.log(`👥 Drivers cached — ${drivers.length} drivers saved to drivers.json`);
   } catch (err) {
     console.log(`⚠️ Driver fetch failed: ${err.message}`);
+  }
+}
+
+async function fetchAndCacheVehicles(token) {
+  try {
+    console.log('🚗 Fetching vehicles from MiX...');
+    const response = await fetch(`${API_BASE}/assets/group/${CHEVRON_ORG_ID}`, {
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Accept": "application/json",
+      },
+    });
+
+    if (response.status === 401) {
+      console.log('⚠️ Token rejected by vehicles endpoint');
+      return;
+    }
+    if (!response.ok) {
+      console.log(`⚠️ Vehicles endpoint returned ${response.status}`);
+      return;
+    }
+
+    const text = await response.text();
+    const safe = text.replace(/:\s*(-?\d{16,})/g, ': "$1"');
+    const vehicles = JSON.parse(safe);
+
+    const vehiclesPath = path.join(process.cwd(), 'public', 'vehicles.json');
+    fs.writeFileSync(vehiclesPath, JSON.stringify(vehicles, null, 2));
+
+    vehicleLookup.clear();
+    vehicles.forEach(v => {
+      vehicleLookup.set(v.AssetId?.toString(), v);
+    });
+
+    lastVehicleFetch = Date.now();
+    console.log(`🚗 Vehicles cached — ${vehicles.length} vehicles saved to vehicles.json`);
+  } catch (err) {
+    console.log(`⚠️ Vehicle fetch failed: ${err.message}`);
   }
 }
 
@@ -246,26 +297,6 @@ async function authenticate() {
   console.log(`🔑 New token cached, expires in ${data.expires_in}s`);
 
   return cachedToken;
-}
-
-async function getVehicles(token) {
-  const response = await fetch(`${API_BASE}/assets/group/${CHEVRON_ORG_ID}`, {
-    headers: {
-      "Authorization": `Bearer ${token}`,
-      "Accept": "application/json",
-    },
-  });
-
-  if (response.status === 401) {
-    cachedToken = null;
-    tokenExpiresAt = 0;
-    console.log('⚠️ Token rejected by vehicles endpoint, will re-authenticate next poll');
-    return [];
-  }
-  if (!response.ok) return [];
-  const text = await response.text();
-  const safe = text.replace(/:\s*(-?\d{16,})/g, ': "$1"');
-  return JSON.parse(safe);
 }
 
 async function getLatestPositions(token) {
@@ -402,7 +433,7 @@ async function getLatestActiveEvents(token) {
     });
   }
 
-  // Handle warning events — shown in UI
+  // Handle warning events
   const warningEvents = parsed.filter(e => WARNING_EVENT_TYPES[e.EventTypeId]);
   if (warningEvents.length > 0) {
     console.log(`⚠️ Warning events found: ${warningEvents.length}`);
@@ -455,47 +486,16 @@ async function getLatestActiveEvents(token) {
     });
   }
 
-  // Handle silent events — stored only, never shown in UI
-  const silentEvents = parsed.filter(e => SILENT_EVENT_TYPES[e.EventTypeId]);
-  if (silentEvents.length > 0) {
-    console.log(`🔇 Silent events captured: ${silentEvents.length}`);
-    const logEntries = silentEvents.map(e => {
-      const driver = getDriverInfo(e.DriverId);
-      const formattedAddress = e.Position?.FormattedAddress;
-      return JSON.stringify({
-        timestamp: new Date().toISOString(),
-        assetId: e.AssetId,
-        driverId: e.DriverId,
-        driverName: driver.name,
-        driverPhone: driver.phone,
-        eventId: e.EventId,
-        eventType: e.EventTypeId,
-        label: SILENT_EVENT_TYPES[e.EventTypeId],
-        eventTime: e.EventDateTime,
-        receivedAt: e.ReceivedDateTime,
-        address: formattedAddress || null,
-        rawEvent: e
-      });
-    }).join('\n') + '\n';
-    fs.appendFileSync(eventsLogPath, logEntries);
-
-    silentEvents.forEach(e => {
-      if (!e.Position?.FormattedAddress && e.Position?.Latitude && e.Position?.Longitude) {
-        enrichEntryWithAddress(eventsLogPath, e.EventId, e.Position.Latitude, e.Position.Longitude);
-      }
-    });
-  }
-
   return parsed;
 }
 
-function mergeData(vehicles, positions) {
+function mergeData(positions) {
   const positionsByAsset = new Map();
   positions.forEach(p => {
     positionsByAsset.set(p.AssetId?.toString(), p);
   });
 
-  return vehicles.map(vehicle => {
+  return Array.from(vehicleLookup.values()).map(vehicle => {
     const assetId = vehicle.AssetId?.toString();
     const pos = positionsByAsset.get(assetId);
 
@@ -565,21 +565,24 @@ export async function pollOnce() {
       const token = await authenticate();
       console.log("✅ Authenticated");
 
+      // Refresh drivers weekly
       if (driverLookup.size === 0 || Date.now() - lastDriverFetch > DRIVER_REFRESH_INTERVAL_MS) {
         await fetchAndCacheDrivers(token);
       }
 
-      const [vehicles, latestActiveEvents, positions] = await Promise.all([
-        getVehicles(token),
+      // Refresh vehicles weekly
+      if (vehicleLookup.size === 0 || Date.now() - lastVehicleFetch > VEHICLE_REFRESH_INTERVAL_MS) {
+        await fetchAndCacheVehicles(token);
+      }
+
+      const [latestActiveEvents, positions] = await Promise.all([
         getLatestActiveEvents(token),
         getLatestPositions(token),
       ]);
 
-      const allEvents = [...latestActiveEvents];
+      console.log(`✅ Vehicles: ${vehicleLookup.size} | Active Events: ${latestActiveEvents.length} | Positions: ${positions.length}`);
 
-      console.log(`✅ Vehicles: ${vehicles.length} | Active Events: ${latestActiveEvents.length} | Positions: ${positions.length}`);
-
-      allEvents.forEach(event => {
+      latestActiveEvents.forEach(event => {
         if (event.EventTypeId === PANIC_EVENT_TYPE_ID) {
           const assetId = event.AssetId?.toString();
           if (assetId) {
@@ -595,12 +598,12 @@ export async function pollOnce() {
         }
       });
 
-      if (vehicles.length === 0 || positions.length === 0) {
+      if (vehicleLookup.size === 0 || positions.length === 0) {
         console.log('⚠️ Empty response from MiX, skipping write to data.json');
         return { ok: true, stats: null, runCount };
       }
 
-      const merged = mergeData(vehicles, positions);
+      const merged = mergeData(positions);
 
       const stats = {
         panic: merged.filter(v => v.panic).length,
@@ -620,7 +623,7 @@ export async function pollOnce() {
       const metadata = {
         lastUpdate: new Date().toISOString(),
         runNumber: runCount,
-        totalVehicles: vehicles.length,
+        totalVehicles: vehicleLookup.size,
         ...stats
       };
       fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
@@ -663,6 +666,7 @@ export function startPolling(options = {}) {
   pollingMaxRuns = maxRuns ?? null;
 
   loadDriverLookup();
+  loadVehicleLookup();
 
   console.log("🚀 MiX Auto-Polling Started");
   console.log("=".repeat(70));
