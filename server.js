@@ -8,7 +8,7 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 const app = express()
-const PORT = 3000
+const PORT = process.env.PORT || 3000
 const API_SECRET = process.env.API_SECRET
 const ACKNOWLEDGED_FILE = path.join(process.cwd(), 'public', 'acknowledged.json')
 
@@ -194,7 +194,7 @@ app.use((req, res) => {
 
 // Start server and polling
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 CNL Dashboard server running on port ${PORT}`)
+  console.log(`🚀 JMG Dashboard server running on port ${PORT}`)
   console.log(`📡 Starting MiX polling...`)
   startPolling({ maxRuns: null })
 })

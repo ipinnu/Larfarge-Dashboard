@@ -16,12 +16,13 @@ const CREDENTIALS = {
   client_secret: process.env.MIX_CLIENT_SECRET,
 };
 
-const CHEVRON_ORG_ID = process.env.CHEVRON_ORG_ID;
+const JMG_ORG_ID = process.env.JMG_ORG_ID;
 
 const POLL_INTERVAL_MS = 10 * 1000;
 const MAX_RUNS = 1200;
 const DRIVER_REFRESH_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
 const VEHICLE_REFRESH_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
+const SITE_REFRESH_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
 
 let runCount = 0;
 let inFlight = null;
@@ -29,6 +30,7 @@ let pollingInterval = null;
 let pollingMaxRuns = MAX_RUNS;
 let lastDriverFetch = 0;
 let lastVehicleFetch = 0;
+let lastSiteFetch = 0;
 
 function getCurrentSinceToken() {
   const now = new Date();
@@ -61,6 +63,7 @@ const excessiveIdleVehicles = new Set();
 
 let driverLookup = new Map();
 let vehicleLookup = new Map();
+let siteLookup = new Map(); // SiteId (string) → { siteName, zoneId, zoneName }
 
 function loadDriverLookup() {
   try {
@@ -101,10 +104,77 @@ function loadVehicleLookup() {
   return false;
 }
 
+function flattenGroups(node, zoneName = null, zoneId = null) {
+  const entries = [];
+  const type = node.Type;
+
+  // OrganisationSubGroup acts as a zone container (e.g. "Light Fleet")
+  // SiteGroup/DefaultSite with no parent zone is its own zone
+  const isZoneContainer = type === 'OrganisationSubGroup';
+  const isSite = type === 'SiteGroup' || type === 'DefaultSite';
+
+  const currentZoneName = isZoneContainer ? node.Name : (zoneName || node.Name);
+  const currentZoneId = isZoneContainer ? node.GroupId?.toString() : (zoneId || node.GroupId?.toString());
+
+  if (isSite || isZoneContainer) {
+    entries.push({
+      id: node.GroupId?.toString(),
+      name: node.Name,
+      type: node.Type,
+      zoneName: currentZoneName,
+      zoneId: currentZoneId,
+    });
+  }
+
+  if (Array.isArray(node.SubGroups)) {
+    node.SubGroups.forEach(child => {
+      entries.push(...flattenGroups(child, currentZoneName, currentZoneId));
+    });
+  }
+  return entries;
+}
+
+function loadSiteLookup() {
+  try {
+    const sitesPath = path.join(process.cwd(), 'public', 'sites.json');
+    if (fs.existsSync(sitesPath)) {
+      const sites = JSON.parse(fs.readFileSync(sitesPath, 'utf8'));
+      siteLookup.clear();
+      sites.forEach(s => siteLookup.set(s.id, s));
+      console.log(`🗺️ Site lookup loaded — ${siteLookup.size} entries`);
+    }
+  } catch {
+    console.log('⚠️ Could not load sites.json — zone/site info will be N/A');
+  }
+}
+
+async function fetchAndCacheSites(token) {
+  try {
+    console.log('🗺️ Fetching organisation groups from MiX...');
+    const response = await fetch(`${API_BASE}/organisationgroups/subgroups/${JMG_ORG_ID}`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+    });
+    if (response.status === 401) { console.log('⚠️ Token rejected by organisationgroups endpoint'); return; }
+    if (!response.ok) { console.log(`⚠️ organisationgroups endpoint returned ${response.status}`); return; }
+    const text = await response.text();
+    const safe = text.replace(/:\s*(-?\d{16,})/g, ': "$1"');
+    const root = JSON.parse(safe);
+    const flat = flattenGroups(root);
+    const sitesPath = path.join(process.cwd(), 'public', 'sites.json');
+    fs.writeFileSync(sitesPath, JSON.stringify(flat, null, 2));
+    siteLookup.clear();
+    flat.forEach(s => siteLookup.set(s.id, s));
+    lastSiteFetch = Date.now();
+    console.log(`🗺️ Sites cached — ${flat.length} group entries saved to sites.json`);
+  } catch (err) {
+    console.log(`⚠️ Site fetch failed: ${err.message}`);
+  }
+}
+
 async function fetchAndCacheDrivers(token) {
   try {
     console.log('👥 Fetching drivers from MiX...');
-    const response = await fetch(`${API_BASE}/drivers/organisation/${CHEVRON_ORG_ID}`, {
+    const response = await fetch(`${API_BASE}/drivers/organisation/${JMG_ORG_ID}`, {
       headers: {
         "Authorization": `Bearer ${token}`,
         "Accept": "application/json",
@@ -131,7 +201,7 @@ async function fetchAndCacheDrivers(token) {
 async function fetchAndCacheVehicles(token) {
   try {
     console.log('🚗 Fetching vehicles from MiX...');
-    const response = await fetch(`${API_BASE}/assets/group/${CHEVRON_ORG_ID}`, {
+    const response = await fetch(`${API_BASE}/assets/group/${JMG_ORG_ID}`, {
       headers: {
         "Authorization": `Bearer ${token}`,
         "Accept": "application/json",
@@ -231,6 +301,7 @@ export function resetState() {
   activeParseRetryDone = false;
   cachedToken = null;
   tokenExpiresAt = 0;
+  lastSiteFetch = 0;
   console.log('🔄 State reset — triggeredEvents cleared, activeSinceToken reset to now');
 }
 
@@ -247,6 +318,7 @@ async function authenticate() {
     scope: "offline_access MiX.Integrate",
   });
 
+  console.log("🔐 Auth params:", { username: CREDENTIALS.username, client_id: CREDENTIALS.client_id, has_secret: !!CREDENTIALS.client_secret, has_password: !!CREDENTIALS.password });
   const response = await fetch(IDENTITY_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -262,7 +334,10 @@ async function authenticate() {
   }
 
   const data = await response.json();
-  if (!data.access_token) throw new Error("No access token in response");
+  if (!data.access_token) {
+    console.log("❌ Auth response:", JSON.stringify(data));
+    throw new Error("No access token in response");
+  }
   cachedToken = data.access_token;
   tokenExpiresAt = now + (data.expires_in * 1000);
   console.log(`🔑 New token cached, expires in ${data.expires_in}s`);
@@ -277,7 +352,7 @@ async function getLatestPositions(token) {
       "Accept": "application/json",
       "Content-Type": "application/json",
     },
-    body: `[${process.env.CHEVRON_ORG_ID}]`,
+    body: `[${process.env.JMG_ORG_ID}]`,
   });
   if (response.status === 401) {
     cachedToken = null; tokenExpiresAt = 0;
@@ -291,7 +366,7 @@ async function getLatestPositions(token) {
 }
 
 async function getActivePanicEvents(token) {
-  const endpoint = `${API_BASE}/activeevents/groups/createdsince/organisation/${CHEVRON_ORG_ID}/sincetoken/NEW/quantity/1000`;
+  const endpoint = `${API_BASE}/activeevents/groups/createdsince/organisation/${JMG_ORG_ID}/sincetoken/NEW/quantity/1000`;
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: {
@@ -321,7 +396,7 @@ async function getLatestActiveEvents(token) {
       "Accept": "application/json",
       "Content-Type": "application/json",
     },
-    body: `[${CHEVRON_ORG_ID}]`,
+    body: `[${JMG_ORG_ID}]`,
   });
   if (response.status === 401) {
     cachedToken = null; tokenExpiresAt = 0;
@@ -508,10 +583,15 @@ function mergeData(positions) {
       }
     }
 
+    const siteInfo = siteLookup.get(vehicle.SiteId?.toString());
+
     return {
       id: assetId || 'unknown',
       regNo: vehicle.RegistrationNumber || 'N/A',
-      transporter: vehicle.SiteName || 'Chevron Nigeria',
+      transporter: vehicle.SiteName || 'JMG',
+      site: siteInfo?.name || 'Unknown Site',
+      zone: siteInfo?.zoneName || 'Unknown Zone',
+      siteId: vehicle.SiteId?.toString() || null,
       assetName: vehicle.Description || 'Unknown Vehicle',
       make: vehicle.Make || 'N/A',
       model: vehicle.Model || 'N/A',
@@ -552,6 +632,10 @@ export async function pollOnce() {
 
       if (vehicleLookup.size === 0 || Date.now() - lastVehicleFetch > VEHICLE_REFRESH_INTERVAL_MS) {
         await fetchAndCacheVehicles(token);
+      }
+
+      if (siteLookup.size === 0 || Date.now() - lastSiteFetch > SITE_REFRESH_INTERVAL_MS) {
+        await fetchAndCacheSites(token);
       }
 
       const [latestActiveEvents, positions] = await Promise.all([
@@ -641,6 +725,7 @@ export function startPolling(options = {}) {
 
   loadDriverLookup();
   loadVehicleLookup();
+  loadSiteLookup();
 
   console.log("🚀 MiX Auto-Polling Started");
   console.log("=".repeat(70));

@@ -42,7 +42,11 @@ public/data.json
 public/metadata.json
 public/acknowledged.json
 public/drivers.json
-public/vehicles.json 
+public/vehicles.json
+public/sites.json
+
+# Claude Code memory
+.claude/
 
 # Sensitive/dead code files
 temp.js
