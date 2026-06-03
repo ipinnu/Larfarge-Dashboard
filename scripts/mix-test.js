@@ -16,7 +16,7 @@ const CREDENTIALS = {
   client_secret: process.env.MIX_CLIENT_SECRET,
 };
 
-const JMG_ORG_ID = process.env.JMG_ORG_ID;
+const LAFARGE_ORG_ID = process.env.LAFARGE_ORG_ID;
 
 const POLL_INTERVAL_MS = 10 * 1000;
 const MAX_RUNS = 1200;
@@ -151,7 +151,7 @@ function loadSiteLookup() {
 async function fetchAndCacheSites(token) {
   try {
     console.log('🗺️ Fetching organisation groups from MiX...');
-    const response = await fetch(`${API_BASE}/organisationgroups/subgroups/${JMG_ORG_ID}`, {
+    const response = await fetch(`${API_BASE}/organisationgroups/subgroups/${LAFARGE_ORG_ID}`, {
       headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
     });
     if (response.status === 401) { console.log('⚠️ Token rejected by organisationgroups endpoint'); return; }
@@ -174,7 +174,7 @@ async function fetchAndCacheSites(token) {
 async function fetchAndCacheDrivers(token) {
   try {
     console.log('👥 Fetching drivers from MiX...');
-    const response = await fetch(`${API_BASE}/drivers/organisation/${JMG_ORG_ID}`, {
+    const response = await fetch(`${API_BASE}/drivers/organisation/${LAFARGE_ORG_ID}`, {
       headers: {
         "Authorization": `Bearer ${token}`,
         "Accept": "application/json",
@@ -201,7 +201,7 @@ async function fetchAndCacheDrivers(token) {
 async function fetchAndCacheVehicles(token) {
   try {
     console.log('🚗 Fetching vehicles from MiX...');
-    const response = await fetch(`${API_BASE}/assets/group/${JMG_ORG_ID}`, {
+    const response = await fetch(`${API_BASE}/assets/group/${LAFARGE_ORG_ID}`, {
       headers: {
         "Authorization": `Bearer ${token}`,
         "Accept": "application/json",
@@ -352,7 +352,7 @@ async function getLatestPositions(token) {
       "Accept": "application/json",
       "Content-Type": "application/json",
     },
-    body: `[${process.env.JMG_ORG_ID}]`,
+    body: `[${process.env.LAFARGE_ORG_ID}]`,
   });
   if (response.status === 401) {
     cachedToken = null; tokenExpiresAt = 0;
@@ -366,7 +366,7 @@ async function getLatestPositions(token) {
 }
 
 async function getActivePanicEvents(token) {
-  const endpoint = `${API_BASE}/activeevents/groups/createdsince/organisation/${JMG_ORG_ID}/sincetoken/NEW/quantity/1000`;
+  const endpoint = `${API_BASE}/activeevents/groups/createdsince/organisation/${LAFARGE_ORG_ID}/sincetoken/NEW/quantity/1000`;
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: {
@@ -396,7 +396,7 @@ async function getLatestActiveEvents(token) {
       "Accept": "application/json",
       "Content-Type": "application/json",
     },
-    body: `[${JMG_ORG_ID}]`,
+    body: `[${LAFARGE_ORG_ID}]`,
   });
   if (response.status === 401) {
     cachedToken = null; tokenExpiresAt = 0;
@@ -588,7 +588,7 @@ function mergeData(positions) {
     return {
       id: assetId || 'unknown',
       regNo: vehicle.RegistrationNumber || 'N/A',
-      transporter: vehicle.SiteName || 'JMG',
+      transporter: vehicle.SiteName || 'Lafarge',
       site: siteInfo?.name || 'Unknown Site',
       zone: siteInfo?.zoneName || 'Unknown Zone',
       siteId: vehicle.SiteId?.toString() || null,

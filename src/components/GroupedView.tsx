@@ -43,13 +43,6 @@ const STATUS_PRIORITY: Record<StatusType, number> = {
   'Moving': 7, 'Idle': 6, 'Excessive Idle': 5, 'Stationary': 4, 'Parked': 3, 'Offline': 2, 'Inactive': 1,
 };
 
-// Geography → site name mapping
-const GEO: Record<string, string[] | null> = {
-  'All Locations': null,
-  'Lagos': ['NBL', 'Hiabs Logistics', 'Closed Body Logistics', 'HAULAGE', 'Port Logistics', 'Closed Body-Interstate', 'Flat Trucks Logistics', 'Light Fleet JMG', 'Default Site'],
-  'Abuja': ['Abuja'],
-  'Port Harcourt': ['PH'],
-};
 
 const STALE_MS = 60_000;
 const WARNING_CLEAR_MS = 60_000;
@@ -245,8 +238,15 @@ export default function GroupedView({ statusFilter, authFetch }: Props) {
   const [loading, setLoading] = useState(true);
   const [isStale, setIsStale] = useState(false);
   const [search, setSearch] = useState('');
-  const [geo, setGeo] = useState<string>('All Locations');
+  const [zoneFilter, setZoneFilter] = useState<string>('All Locations');
   const [allOpen, setAllOpen] = useState(true);
+
+  // Derive unique zones from live data
+  const availableZones = useMemo(() => {
+    const zones = new Set<string>();
+    vehicles.forEach(v => { if (v.zone && v.zone !== 'Unknown Zone') zones.add(v.zone); });
+    return ['All Locations', ...Array.from(zones).sort()];
+  }, [vehicles]);
   const warningTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const lastSuccess = useRef<number>(Date.now());
 
@@ -297,16 +297,16 @@ export default function GroupedView({ statusFilter, authFetch }: Props) {
 
   const groups = useMemo(() => {
     const q = search.toLowerCase().trim();
-    const geoFilter = GEO[geo];
 
     const filtered = vehicles.filter(v => {
       if (statusFilter !== 'All' && v.status !== statusFilter) return false;
-      if (geoFilter && !geoFilter.includes(v.site)) return false;
+      if (zoneFilter !== 'All Locations' && v.zone !== zoneFilter) return false;
       if (!q) return true;
       return (
         v.regNo.toLowerCase().includes(q) ||
         v.assetName.toLowerCase().includes(q) ||
-        v.site?.toLowerCase().includes(q)
+        v.site?.toLowerCase().includes(q) ||
+        v.transporter?.toLowerCase().includes(q)
       );
     });
 
@@ -335,7 +335,7 @@ export default function GroupedView({ statusFilter, authFetch }: Props) {
       if (am !== bm) return bm - am;
       return b.length - a.length;
     });
-  }, [vehicles, statusFilter, search, geo]);
+  }, [vehicles, statusFilter, search, zoneFilter]);
 
   const totalShown = groups.reduce((n, [, vs]) => n + vs.length, 0);
 
@@ -366,15 +366,15 @@ export default function GroupedView({ statusFilter, authFetch }: Props) {
             />
           </div>
 
-          {/* Geography dropdown */}
+          {/* Zone dropdown — derived from live data */}
           <div className="gv-select-wrap">
             <select
               className="gv-select"
-              value={geo}
-              onChange={e => setGeo(e.target.value)}
+              value={zoneFilter}
+              onChange={e => setZoneFilter(e.target.value)}
             >
-              {Object.keys(GEO).map(g => (
-                <option key={g} value={g}>{g}</option>
+              {availableZones.map(z => (
+                <option key={z} value={z}>{z}</option>
               ))}
             </select>
           </div>

@@ -1,0 +1,341 @@
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  .shell { display: flex; height: 620px; background: #0D1B2A; font-family: var(--font-sans); overflow: hidden; border-radius: var(--border-radius-lg); }
+  .sidebar { width: 220px; min-width: 220px; background: #0a1520; border-right: 0.5px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; }
+  .logo-area { padding: 16px 16px 12px; border-bottom: 0.5px solid rgba(255,255,255,0.08); }
+  .logo-row { display: flex; align-items: center; gap: 10px; }
+  .logo-icon { width: 32px; height: 32px; background: #0078D4; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+  .logo-text { font-size: 13px; font-weight: 500; color: #fff; line-height: 1.2; }
+  .logo-sub { font-size: 10px; color: rgba(255,255,255,0.4); }
+  .nav-scroll { flex: 1; overflow-y: auto; padding: 8px 0; }
+  .nav-scroll::-webkit-scrollbar { width: 3px; }
+  .nav-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+  .nav-section { margin-bottom: 2px; }
+  .nav-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; cursor: pointer; border-radius: 0; transition: background 0.15s; color: rgba(255,255,255,0.55); font-size: 12.5px; user-select: none; }
+  .nav-item:hover { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.85); }
+  .nav-item.active { background: rgba(0,120,212,0.18); color: #0078D4; }
+  .nav-item-left { display: flex; align-items: center; gap: 9px; }
+  .nav-item i { font-size: 16px; }
+  .chevron { font-size: 12px; transition: transform 0.2s; color: rgba(255,255,255,0.25); }
+  .chevron.open { transform: rotate(180deg); }
+  .subnav { overflow: hidden; max-height: 0; transition: max-height 0.25s ease; }
+  .subnav.open { max-height: 300px; }
+  .subnav-item { display: flex; align-items: center; gap: 8px; padding: 6px 14px 6px 38px; font-size: 12px; color: rgba(255,255,255,0.4); cursor: pointer; transition: background 0.15s; }
+  .subnav-item:hover { background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.75); }
+  .subnav-item.active { color: #0078D4; }
+  .subnav-item i { font-size: 13px; }
+  .nav-divider { height: 0.5px; background: rgba(255,255,255,0.06); margin: 6px 14px; }
+  .nav-bottom { padding: 8px 0 12px; border-top: 0.5px solid rgba(255,255,255,0.08); }
+  .aria-badge { margin: 8px 10px 0; background: rgba(0,120,212,0.12); border: 0.5px solid rgba(0,120,212,0.3); border-radius: 8px; padding: 8px 10px; display: flex; align-items: center; gap: 8px; }
+  .aria-dot { width: 6px; height: 6px; background: #0078D4; border-radius: 50%; }
+  .aria-label { font-size: 11px; color: rgba(0,120,212,0.9); font-weight: 500; }
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .topbar { height: 52px; min-height: 52px; border-bottom: 0.5px solid rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; background: #0a1520; }
+  .topbar-left { display: flex; align-items: center; gap: 8px; }
+  .page-title { font-size: 15px; font-weight: 500; color: #fff; }
+  .page-sub { font-size: 12px; color: rgba(255,255,255,0.35); }
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+  .topbar-btn { width: 32px; height: 32px; border-radius: 8px; background: rgba(255,255,255,0.06); border: 0.5px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; cursor: pointer; color: rgba(255,255,255,0.5); font-size: 16px; position: relative; }
+  .topbar-btn:hover { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.8); }
+  .notif-dot { position: absolute; top: 4px; right: 4px; width: 7px; height: 7px; background: #CC0000; border-radius: 50%; border: 1.5px solid #0a1520; }
+  .content { flex: 1; overflow-y: auto; padding: 18px 20px; background: #0D1B2A; }
+  .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+  .stat-card { background: #0a1520; border: 0.5px solid rgba(255,255,255,0.08); border-radius: var(--border-radius-md); padding: 14px; }
+  .stat-label { font-size: 11px; color: rgba(255,255,255,0.35); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-val { font-size: 22px; font-weight: 500; color: #fff; }
+  .stat-delta { font-size: 11px; margin-top: 4px; }
+  .delta-up { color: #2ecc71; }
+  .delta-down { color: #CC0000; }
+  .section-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .panel { background: #0a1520; border: 0.5px solid rgba(255,255,255,0.08); border-radius: var(--border-radius-md); padding: 14px; }
+  .panel-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .panel-title { font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.7); }
+  .panel-link { font-size: 11px; color: #0078D4; cursor: pointer; }
+  .alert-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 0.5px solid rgba(255,255,255,0.05); }
+  .alert-item:last-child { border-bottom: none; }
+  .alert-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 4px; min-width: 8px; }
+  .dot-red { background: #CC0000; }
+  .dot-amber { background: #f39c12; }
+  .dot-green { background: #2ecc71; }
+  .alert-text { font-size: 12px; color: rgba(255,255,255,0.6); line-height: 1.4; }
+  .alert-driver { font-weight: 500; color: rgba(255,255,255,0.85); }
+  .alert-time { font-size: 10px; color: rgba(255,255,255,0.25); margin-top: 2px; }
+  .driver-row { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; border-bottom: 0.5px solid rgba(255,255,255,0.05); }
+  .driver-row:last-child { border-bottom: none; }
+  .driver-info { display: flex; align-items: center; gap: 8px; }
+  .driver-avatar { width: 26px; height: 26px; border-radius: 50%; background: rgba(0,120,212,0.2); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 500; color: #0078D4; }
+  .driver-name { font-size: 12px; color: rgba(255,255,255,0.75); }
+  .score-pill { font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 500; }
+  .score-red { background: rgba(204,0,0,0.15); color: #ff6b6b; }
+  .score-amber { background: rgba(243,156,18,0.15); color: #f39c12; }
+  .score-green { background: rgba(46,204,113,0.15); color: #2ecc71; }
+  .aria-strip { background: rgba(0,120,212,0.08); border: 0.5px solid rgba(0,120,212,0.2); border-radius: var(--border-radius-md); padding: 12px 14px; margin-bottom: 16px; display: flex; align-items: flex-start; gap: 10px; }
+  .aria-icon { width: 28px; height: 28px; background: rgba(0,120,212,0.15); border-radius: 6px; display: flex; align-items: center; justify-content: center; min-width: 28px; }
+  .aria-content { flex: 1; }
+  .aria-title { font-size: 12px; font-weight: 500; color: #0078D4; margin-bottom: 3px; }
+  .aria-body { font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.5; }
+  .coming-soon { font-size: 10px; background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.3); padding: 1px 6px; border-radius: 4px; margin-left: 6px; }
+</style>
+
+<h2 class="sr-only">ARIA Fleet Intelligence Dashboard — navigation and overview UI mockup</h2>
+
+<div class="shell">
+  <div class="sidebar">
+    <div class="logo-area">
+      <div class="logo-row">
+        <div class="logo-icon"><i class="ti ti-truck" style="color:#fff;font-size:16px" aria-hidden="true"></i></div>
+        <div>
+          <div class="logo-text">ARIA</div>
+          <div class="logo-sub">Fleet Intelligence</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-scroll">
+      <div class="nav-section">
+        <div class="nav-item active" onclick="setActive(this,'Dashboard')">
+          <div class="nav-item-left"><i class="ti ti-layout-dashboard" aria-hidden="true"></i> Dashboard</div>
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-item" onclick="toggleNav(this,'driver-sub')">
+          <div class="nav-item-left"><i class="ti ti-users" aria-hidden="true"></i> Driver management</div>
+          <i class="ti ti-chevron-down chevron" aria-hidden="true"></i>
+        </div>
+        <div class="subnav" id="driver-sub">
+          <div class="subnav-item"><i class="ti ti-user" aria-hidden="true"></i> Drivers</div>
+          <div class="subnav-item"><i class="ti ti-school" aria-hidden="true"></i> Coaching</div>
+          <div class="subnav-item"><i class="ti ti-certificate" aria-hidden="true"></i> Training</div>
+          <div class="subnav-item"><i class="ti ti-id" aria-hidden="true"></i> Certifications</div>
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-item" onclick="toggleNav(this,'incident-sub')">
+          <div class="nav-item-left"><i class="ti ti-alert-triangle" aria-hidden="true"></i> Incident intelligence</div>
+          <i class="ti ti-chevron-down chevron" aria-hidden="true"></i>
+        </div>
+        <div class="subnav" id="incident-sub">
+          <div class="subnav-item"><i class="ti ti-zoom-exclamation" aria-hidden="true"></i> Event explorer</div>
+          <div class="subnav-item"><i class="ti ti-chart-dots" aria-hidden="true"></i> Analysis</div>
+          <div class="subnav-item"><i class="ti ti-list-check" aria-hidden="true"></i> Response tracking</div>
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-item" onclick="toggleNav(this,'vault-sub')">
+          <div class="nav-item-left"><i class="ti ti-lock" aria-hidden="true"></i> Safety vault</div>
+          <i class="ti ti-chevron-down chevron" aria-hidden="true"></i>
+        </div>
+        <div class="subnav" id="vault-sub">
+          <div class="subnav-item"><i class="ti ti-file-description" aria-hidden="true"></i> Incident records</div>
+          <div class="subnav-item"><i class="ti ti-search" aria-hidden="true"></i> Investigations</div>
+          <div class="subnav-item"><i class="ti ti-tool" aria-hidden="true"></i> Corrective actions</div>
+          <div class="subnav-item"><i class="ti ti-message-check" aria-hidden="true"></i> Acknowledgements</div>
+          <div class="subnav-item"><i class="ti ti-history" aria-hidden="true"></i> Audit trail</div>
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-item" onclick="toggleNav(this,'aria-sub')">
+          <div class="nav-item-left"><i class="ti ti-brain" aria-hidden="true"></i> ARIA intelligence</div>
+          <i class="ti ti-chevron-down chevron" aria-hidden="true"></i>
+        </div>
+        <div class="subnav" id="aria-sub">
+          <div class="subnav-item"><i class="ti ti-microscope" aria-hidden="true"></i> Incident analysis</div>
+          <div class="subnav-item"><i class="ti ti-git-branch" aria-hidden="true"></i> Root cause</div>
+          <div class="subnav-item"><i class="ti ti-trending-up" aria-hidden="true"></i> Driver risk trends</div>
+          <div class="subnav-item"><i class="ti ti-message-bolt" aria-hidden="true"></i> Coaching recs</div>
+          <div class="subnav-item"><i class="ti ti-cloud-rain" aria-hidden="true"></i> Environmental context</div>
+          <div class="subnav-item"><i class="ti ti-book" aria-hidden="true"></i> FMCSA / FRSC mapping</div>
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-item" onclick="toggleNav(this,'reports-sub')">
+          <div class="nav-item-left"><i class="ti ti-report" aria-hidden="true"></i> Reports & reviews</div>
+          <i class="ti ti-chevron-down chevron" aria-hidden="true"></i>
+        </div>
+        <div class="subnav" id="reports-sub">
+          <div class="subnav-item"><i class="ti ti-calendar-week" aria-hidden="true"></i> Weekly</div>
+          <div class="subnav-item"><i class="ti ti-calendar-month" aria-hidden="true"></i> Monthly</div>
+          <div class="subnav-item"><i class="ti ti-calendar-stats" aria-hidden="true"></i> Quarterly</div>
+          <div class="subnav-item"><i class="ti ti-target" aria-hidden="true"></i> Action tracking</div>
+          <div class="subnav-item"><i class="ti ti-folder" aria-hidden="true"></i> Documents</div>
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-item" onclick="toggleNav(this,'ops-sub')">
+          <div class="nav-item-left"><i class="ti ti-chart-bar" aria-hidden="true"></i> Operations</div>
+          <i class="ti ti-chevron-down chevron" aria-hidden="true"></i>
+        </div>
+        <div class="subnav" id="ops-sub">
+          <div class="subnav-item"><i class="ti ti-percentage" aria-hidden="true"></i> Utilization</div>
+          <div class="subnav-item"><i class="ti ti-clock" aria-hidden="true"></i> Productivity</div>
+          <div class="subnav-item"><i class="ti ti-coin" aria-hidden="true"></i> Asset economics</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-bottom">
+      <div class="nav-item" onclick="setActive(this,'Settings')">
+        <div class="nav-item-left"><i class="ti ti-settings" aria-hidden="true"></i> Settings</div>
+      </div>
+      <div class="aria-badge">
+        <div class="aria-dot"></div>
+        <div class="aria-label">ARIA online</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <div class="page-title" id="page-title">Dashboard</div>
+        <div class="page-sub" id="page-sub">— real-time fleet overview</div>
+      </div>
+      <div class="topbar-right">
+        <div class="topbar-btn"><i class="ti ti-search" aria-hidden="true"></i></div>
+        <div class="topbar-btn"><i class="ti ti-bell" aria-hidden="true"></i><div class="notif-dot"></div></div>
+        <div class="topbar-btn"><i class="ti ti-user-circle" aria-hidden="true"></i></div>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="aria-strip">
+        <div class="aria-icon"><i class="ti ti-brain" style="font-size:14px;color:#0078D4" aria-hidden="true"></i></div>
+        <div class="aria-content">
+          <div class="aria-title">ARIA — fleet intelligence advisory</div>
+          <div class="aria-body">3 drivers require intervention today. Driver Emeka Obi shows escalating harsh braking on the Apapa corridor — wet roads and heavy congestion detected. Recommend immediate coaching assignment.</div>
+        </div>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat-card">
+          <div class="stat-label">Fleet safety score</div>
+          <div class="stat-val">74<span style="font-size:14px;color:rgba(255,255,255,0.3)">/100</span></div>
+          <div class="stat-delta delta-down">▼ 6 pts vs last week</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Active vehicles</div>
+          <div class="stat-val">43</div>
+          <div class="stat-delta delta-up">▲ 3 vs yesterday</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Open critical alerts</div>
+          <div class="stat-val" style="color:#CC0000">8</div>
+          <div class="stat-delta delta-down">▼ requires action</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Incidents this week</div>
+          <div class="stat-val">31</div>
+          <div class="stat-delta delta-down">▲ 12 vs last week</div>
+        </div>
+      </div>
+
+      <div class="section-row">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Active critical alerts</div>
+            <div class="panel-link">View all</div>
+          </div>
+          <div class="alert-item">
+            <div class="alert-dot dot-red"></div>
+            <div>
+              <div class="alert-text"><span class="alert-driver">Emeka Obi</span> — harsh braking 0.47G, wet road, heavy traffic</div>
+              <div class="alert-time">2 min ago · Apapa corridor</div>
+            </div>
+          </div>
+          <div class="alert-item">
+            <div class="alert-dot dot-red"></div>
+            <div>
+              <div class="alert-text"><span class="alert-driver">Tunde Adeyemi</span> — speeding 28km/h over limit</div>
+              <div class="alert-time">11 min ago · Lagos-Ibadan expressway</div>
+            </div>
+          </div>
+          <div class="alert-item">
+            <div class="alert-dot dot-amber"></div>
+            <div>
+              <div class="alert-text"><span class="alert-driver">Chidi Nwosu</span> — excessive idling 22 min</div>
+              <div class="alert-time">18 min ago · Victoria Island</div>
+            </div>
+          </div>
+          <div class="alert-item">
+            <div class="alert-dot dot-green"></div>
+            <div>
+              <div class="alert-text"><span class="alert-driver">Babatunde Salami</span> — 7-day safe driving streak</div>
+              <div class="alert-time">Today · consistent improvement</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Drivers requiring intervention</div>
+            <div class="panel-link">View all</div>
+          </div>
+          <div class="driver-row">
+            <div class="driver-info">
+              <div class="driver-avatar">EO</div>
+              <div class="driver-name">Emeka Obi</div>
+            </div>
+            <div class="score-pill score-red">38/100</div>
+          </div>
+          <div class="driver-row">
+            <div class="driver-info">
+              <div class="driver-avatar">TA</div>
+              <div class="driver-name">Tunde Adeyemi</div>
+            </div>
+            <div class="score-pill score-red">42/100</div>
+          </div>
+          <div class="driver-row">
+            <div class="driver-info">
+              <div class="driver-avatar">CN</div>
+              <div class="driver-name">Chidi Nwosu</div>
+            </div>
+            <div class="score-pill score-amber">61/100</div>
+          </div>
+          <div class="driver-row">
+            <div class="driver-info">
+              <div class="driver-avatar">FK</div>
+              <div class="driver-name">Femi Kareem</div>
+            </div>
+            <div class="score-pill score-amber">65/100</div>
+          </div>
+          <div class="driver-row">
+            <div class="driver-info">
+              <div class="driver-avatar">BS</div>
+              <div class="driver-name">Babatunde Salami</div>
+            </div>
+            <div class="score-pill score-green">91/100</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleNav(el, subId) {
+  const sub = document.getElementById(subId);
+  const chevron = el.querySelector('.chevron');
+  const isOpen = sub.classList.contains('open');
+  document.querySelectorAll('.subnav').forEach(s => s.classList.remove('open'));
+  document.querySelectorAll('.chevron').forEach(c => c.classList.remove('open'));
+  if (!isOpen) {
+    sub.classList.add('open');
+    chevron.classList.add('open');
+  }
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+}
+function setActive(el, name) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.subnav').forEach(s => s.classList.remove('open'));
+  document.querySelectorAll('.chevron').forEach(c => c.classList.remove('open'));
+}
+</script>
