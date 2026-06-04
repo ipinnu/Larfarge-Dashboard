@@ -1,11 +1,12 @@
-import { useState } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
-import { Menu, Bell, Search, UserCircle, RotateCcw } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Menu, Bell, Search, UserCircle, ShieldAlert } from 'lucide-react';
 import Sidebar from './Sidebar';
 import ARIAChat from '../ARIAChat';
 import SafetyToast from '../SafetyToast';
 import SafetyIncidentModal from '../SafetyIncidentModal';
-import { useFleet, authFetch } from '../../context/FleetContext';
+import { useFleet } from '../../context/FleetContext';
+import type { SafetyNotification } from '../../hooks/useSafeIQ';
 
 function getPageTitle(pathname: string): { title: string; sub: string } {
   const map: Record<string, { title: string; sub: string }> = {
@@ -38,23 +39,115 @@ function getPageTitle(pathname: string): { title: string; sub: string } {
   return map[pathname] ?? { title: 'BPL Fleet', sub: '' };
 }
 
+function severityColor(s: string) {
+  if (s === 'RED') return '#dc2626';
+  if (s === 'YELLOW') return '#d97706';
+  return '#16a34a';
+}
+
+function timeAgo(ts: string) {
+  const diff = Math.floor((Date.now() - new Date(ts).getTime()) / 1000);
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  return `${Math.floor(diff / 3600)}h ago`;
+}
+
+function NotifPanel({ notifications, onOpen, onDismiss, onClose }: {
+  notifications: SafetyNotification[];
+  onOpen: (n: SafetyNotification) => void;
+  onDismiss: (id: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div style={{
+      position: 'absolute', top: 40, right: 0, width: 340,
+      background: '#0e1e2e', border: '1px solid rgba(255,255,255,0.1)',
+      borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+      zIndex: 200, overflow: 'hidden',
+    }}>
+      <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>SafeIQ Notifications</span>
+        {notifications.length > 0 && (
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>{notifications.length} stored</span>
+        )}
+      </div>
+
+      {notifications.length === 0 ? (
+        <div style={{ padding: '32px 16px', textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: 13 }}>
+          No notifications yet
+        </div>
+      ) : (
+        <div style={{ maxHeight: 420, overflowY: 'auto' }}>
+          {notifications.map((n, i) => {
+            const severity = n.analysis?.severity ?? 'GREEN';
+            const accent = severityColor(severity);
+            return (
+              <div
+                key={n.id}
+                onClick={() => { onOpen(n); onClose(); }}
+                style={{
+                  padding: '12px 16px',
+                  borderBottom: i < notifications.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                  cursor: 'pointer', display: 'flex', gap: 10, alignItems: 'flex-start',
+                  background: 'transparent', transition: 'background 0.15s',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              >
+                <ShieldAlert size={14} style={{ color: accent, flexShrink: 0, marginTop: 2 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {n.driver.name}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 2 }}>
+                    {n.magnitude} · {n.vehicle.id}
+                    {n.eventCount > 1 && <span style={{ color: accent, fontWeight: 600 }}> · {n.eventCount} incidents/30d</span>}
+                  </div>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginTop: 3 }}>
+                    {timeAgo(n.timestamp)}
+                    {n.analysis && <span style={{ color: accent, marginLeft: 6, fontWeight: 600 }}>{severity}</span>}
+                  </div>
+                </div>
+                <button
+                  onClick={e => { e.stopPropagation(); onDismiss(n.id); }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.25)', padding: 2, flexShrink: 0 }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 1L11 11M11 1L1 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AppShell() {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [resetting, setResetting] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [toastDismissed, setToastDismissed] = useState<Set<string>>(new Set());
+  const notifRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
+  const navigate = useNavigate();
   const {
     notifications, dismissNotification, selectedNotification,
     openNotification, closeNotification,
     isMobile, redAlertCount,
   } = useFleet();
 
+  // Close panel on outside click
+  useEffect(() => {
+    if (!notifOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [notifOpen]);
+
   const { title, sub } = getPageTitle(location.pathname);
 
-  const handleReset = async () => {
-    setResetting(true);
-    try { await authFetch('/api/reset', { method: 'POST' }); } catch {}
-    finally { setResetting(false); }
-  };
 
   return (
     <div className="bpl-app">
@@ -112,43 +205,40 @@ export default function AppShell() {
             >
               <Search size={14} />
             </button>
-            <div style={{ position: 'relative' }}>
+            <div style={{ position: 'relative' }} ref={notifRef}>
               <button
+                onClick={() => setNotifOpen(o => !o)}
                 style={{
                   width: 32, height: 32, borderRadius: 8,
-                  background: 'rgba(255,255,255,0.06)',
-                  border: '0.5px solid rgba(255,255,255,0.1)',
+                  background: notifOpen ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.06)',
+                  border: `0.5px solid ${notifOpen ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.1)'}`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', color: 'rgba(255,255,255,0.5)',
+                  cursor: 'pointer', color: notifOpen ? '#fff' : 'rgba(255,255,255,0.5)',
+                  position: 'relative',
                 }}
                 title="Notifications"
               >
                 <Bell size={14} />
-                {redAlertCount > 0 && (
+                {notifications.length > 0 && (
                   <span style={{
                     position: 'absolute', top: 4, right: 4,
-                    width: 7, height: 7, background: '#CC0000',
+                    minWidth: 7, height: 7,
+                    background: redAlertCount > 0 ? '#CC0000' : '#0078D4',
                     borderRadius: '50%', border: '1.5px solid #0a1520',
                   }} />
                 )}
               </button>
+              {notifOpen && (
+                <NotifPanel
+                  notifications={notifications}
+                  onOpen={openNotification}
+                  onDismiss={dismissNotification}
+                  onClose={() => setNotifOpen(false)}
+                />
+              )}
             </div>
             <button
-              onClick={handleReset}
-              disabled={resetting}
-              style={{
-                width: 32, height: 32, borderRadius: 8,
-                background: 'rgba(255,255,255,0.06)',
-                border: '0.5px solid rgba(255,255,255,0.1)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: resetting ? 'not-allowed' : 'pointer',
-                color: 'rgba(255,255,255,0.5)',
-              }}
-              title="Reset dashboard"
-            >
-              <RotateCcw size={14} />
-            </button>
-            <button
+              onClick={() => navigate('/settings/general')}
               style={{
                 width: 32, height: 32, borderRadius: 8,
                 background: 'rgba(255,255,255,0.06)',
@@ -156,7 +246,7 @@ export default function AppShell() {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 cursor: 'pointer', color: 'rgba(255,255,255,0.5)',
               }}
-              title="Profile"
+              title="Settings"
             >
               <UserCircle size={14} />
             </button>
@@ -171,7 +261,11 @@ export default function AppShell() {
         </main>
       </div>
 
-      <SafetyToast notifications={notifications} onDismiss={dismissNotification} onOpen={openNotification} />
+      <SafetyToast
+        notifications={notifications.filter(n => !toastDismissed.has(n.id))}
+        onDismiss={id => setToastDismissed(prev => new Set([...prev, id]))}
+        onOpen={openNotification}
+      />
       {selectedNotification && (
         <SafetyIncidentModal notification={selectedNotification} onClose={closeNotification} />
       )}

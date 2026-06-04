@@ -104,6 +104,8 @@ export interface Vehicle {
   regNo: string;
   transporter: string;
   assetName: string;
+  make?: string;
+  model?: string;
   status: string;
   date: string;
   panic: boolean;
@@ -195,6 +197,7 @@ const FleetContext = createContext<FleetContextType>({} as FleetContextType);
 export function FleetProvider({ children }: { children: React.ReactNode }) {
   const [metadata, setMetadata] = useState<Metadata>(defaultMeta);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const vehiclesRef = useRef<Vehicle[]>([]);
   const [events, setEvents] = useState<LogEntry[]>([]);
   const [notifications, setNotifications] = useState<SafetyNotification[]>([]);
   const [selectedNotification, setSelectedNotification] = useState<SafetyNotification | null>(null);
@@ -208,6 +211,8 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
   });
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 900);
   const seenEventIds = useRef<Set<string>>(new Set());
+  // Tracks the incident count at which we last fired a Claude analysis per driver
+  const driverAnalysisRef = useRef<Map<string, { lastThreshold: number; notifId: string }>>(new Map());
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -232,7 +237,11 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
   const loadVehicles = useCallback(async () => {
     try {
       const res = await authFetch('/api/data');
-      if (res.ok) setVehicles(await res.json());
+      if (res.ok) {
+        const data = await res.json();
+        vehiclesRef.current = data;
+        setVehicles(data);
+      }
     } catch {}
   }, []);
 
@@ -273,49 +282,83 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
             return { incidents: driverEvents.length, trend: trend as 'improving' | 'stable' | 'declining' };
           };
 
-          const notifs: SafetyNotification[] = newOnes.map(e => {
+          // Threshold logic: fire Claude at 3 incidents, then double each time (3 → 6 → 12 → 24...)
+          const nextThreshold = (last: number) => last === 0 ? 3 : last * 2;
+
+          const toAnalyse: LogEntry[] = [];
+
+          newOnes.forEach(e => {
+            const driverKey = e.driverName || e.assetId;
             const stats = getDriverStats(e.driverName);
-            const scoreBaseline = Math.max(0, Math.min(100, 100 - stats.incidents * 3));
-            return {
-              id: e.eventId,
-              type: e.type === 'panic' ? 'harsh_braking' :
-                e.label === 'Overspeeding' || e.label === 'Overspeed Tiered' ? 'speeding' :
-                e.label === 'Harsh Acceleration' ? 'harsh_acceleration' : 'harsh_braking',
-              magnitude: e.label || 'Panic',
-              timestamp: e.eventTime || e.timestamp,
-              location: e.address || 'Unknown location',
-              driver: {
-                id: e.assetId,
-                name: e.driverName || 'Unknown Driver',
-                safety_score_baseline: scoreBaseline,
-                incidents_last_30_days: stats.incidents,
-                improvement_trend: stats.trend,
-              },
-              vehicle: {
-                id: e.regNo || e.assetId,
-                type: 'truck',
-                last_maintenance: 'Check vehicle records',
-              },
-              environment: {
-                weather: 'Lagos conditions',
-                traffic_density: 'moderate',
-                road_type: 'highway',
-              },
-              analysis: null,
-              analysisLoading: true,
-            };
+            const driverState = driverAnalysisRef.current.get(driverKey);
+            const threshold = nextThreshold(driverState?.lastThreshold ?? 0);
+
+            if (stats.incidents >= threshold) {
+              // Threshold crossed — queue for Claude analysis
+              toAnalyse.push(e);
+              driverAnalysisRef.current.set(driverKey, {
+                lastThreshold: stats.incidents,
+                notifId: e.eventId,
+              });
+            } else if (driverState?.notifId) {
+              // Below threshold but driver already has a notification — silently update count
+              setNotifications(prev =>
+                prev.map(n => n.id === driverState.notifId
+                  ? { ...n, eventCount: stats.incidents, driver: { ...n.driver, incidents_last_30_days: stats.incidents } }
+                  : n
+                )
+              );
+            }
+            // else: below threshold, no existing notification — event appears in feed only
           });
 
-          setNotifications(prev => [...notifs, ...prev].slice(0, 10));
+          if (toAnalyse.length > 0) {
+            const newNotifs: SafetyNotification[] = toAnalyse.map(e => {
+              const stats = getDriverStats(e.driverName);
+              const scoreBaseline = Math.max(0, Math.min(100, 100 - stats.incidents * 3));
+              const vehicleRecord = vehiclesRef.current.find(v => v.id === e.assetId?.toString() || v.regNo === e.regNo);
+              return {
+                id: e.eventId,
+                type: e.label === 'Overspeeding' || e.label === 'Overspeed Tiered' ? 'speeding' :
+                  e.label === 'Harsh Acceleration' ? 'harsh_acceleration' : 'harsh_braking',
+                magnitude: e.label || 'Unknown',
+                timestamp: e.eventTime || e.timestamp,
+                location: e.address || 'Unknown location',
+                eventCount: stats.incidents,
+                driver: {
+                  id: e.assetId,
+                  name: e.driverName || 'Unknown Driver',
+                  safety_score_baseline: scoreBaseline,
+                  incidents_last_30_days: stats.incidents,
+                  improvement_trend: stats.trend,
+                },
+                vehicle: {
+                  id: e.regNo || e.assetId,
+                  type: 'truck',
+                  last_maintenance: '',
+                  make: vehicleRecord?.make || '',
+                  model: vehicleRecord?.model || '',
+                },
+                environment: {
+                  weather: e.address || 'Unknown location',
+                  traffic_density: 'moderate',
+                  road_type: 'highway',
+                },
+                analysis: null,
+                analysisLoading: true,
+              };
+            });
 
-          // Fire Claude analysis for each new notification
-          newOnes.forEach(async (e, i) => {
-            const stats = getDriverStats(e.driverName);
-            const analysis = await generateSafeIQAnalysis(e, stats.incidents, stats.trend);
-            setNotifications(prev =>
-              prev.map(n => n.id === e.eventId ? { ...n, analysis, analysisLoading: false } : n)
-            );
-          });
+            setNotifications(prev => [...newNotifs, ...prev].slice(0, 10));
+
+            toAnalyse.forEach(async e => {
+              const stats = getDriverStats(e.driverName);
+              const analysis = await generateSafeIQAnalysis(e, stats.incidents, stats.trend);
+              setNotifications(prev =>
+                prev.map(n => n.id === e.eventId ? { ...n, analysis, analysisLoading: false } : n)
+              );
+            });
+          }
         }
       }
     } catch {}

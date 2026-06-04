@@ -67,20 +67,6 @@ function formatTimestamp(ts: string) {
   }
 }
 
-function daysSince(dateStr: string): number {
-  const now = Date.now();
-  const parts = dateStr.match(/(\w+)\s+(\d{4})|(\w+)\s+(\d{1,2}),\s+(\d{4})/);
-  if (!parts) return 0;
-  try {
-    const parsed = new Date(dateStr);
-    if (!isNaN(parsed.getTime())) {
-      return Math.floor((now - parsed.getTime()) / (1000 * 60 * 60 * 24));
-    }
-  } catch {
-    // ignore
-  }
-  return 0;
-}
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -101,7 +87,6 @@ function SectionCard({ children, style }: { children: React.ReactNode; style?: R
 export default function SafetyIncidentModal({ notification: n, onClose }: Props) {
   const analysis = n.analysis;
   const severity = analysis?.severity ?? 'GREEN';
-  const days = daysSince(n.vehicle.last_maintenance);
 
   const overlayStyle: React.CSSProperties = {
     position: 'fixed',
@@ -177,12 +162,6 @@ export default function SafetyIncidentModal({ notification: n, onClose }: Props)
                 <div style={{ fontSize: '10px', color: 'var(--cd-text-muted)', marginBottom: '3px', fontWeight: '600' }}>LOCATION</div>
                 <div style={{ fontSize: '13px', color: 'var(--cd-text)', fontWeight: '500' }}>{n.location}</div>
               </SectionCard>
-              <SectionCard>
-                <div style={{ fontSize: '10px', color: 'var(--cd-text-muted)', marginBottom: '3px', fontWeight: '600' }}>ENVIRONMENT</div>
-                <div style={{ fontSize: '12px', color: 'var(--cd-text)', fontWeight: '500', lineHeight: '1.6' }}>
-                  {n.environment.weather} · {n.environment.traffic_density.charAt(0).toUpperCase() + n.environment.traffic_density.slice(1)} Traffic · {n.environment.road_type.charAt(0).toUpperCase() + n.environment.road_type.slice(1)}
-                </div>
-              </SectionCard>
             </div>
           </div>
 
@@ -214,13 +193,9 @@ export default function SafetyIncidentModal({ notification: n, onClose }: Props)
 
               <SectionCard>
                 <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--cd-text)', marginBottom: '4px' }}>{n.vehicle.id}</div>
-                <div style={{ fontSize: '11px', color: 'var(--cd-text-muted)', marginBottom: '10px', textTransform: 'capitalize' as const }}>{n.vehicle.type}</div>
-
-                <div style={{ fontSize: '10px', color: 'var(--cd-text-muted)', fontWeight: '600', marginBottom: '4px' }}>LAST MAINTENANCE</div>
-                <div style={{ fontSize: '13px', color: 'var(--cd-text)', fontWeight: '500', marginBottom: '4px' }}>{n.vehicle.last_maintenance}</div>
-                {days > 60 && (
-                  <div style={{ fontSize: '11px', color: '#d97706', fontWeight: '600', background: '#fffbeb', border: '1px solid #fef08a', borderRadius: '6px', padding: '3px 8px', display: 'inline-block' }}>
-                    {days} days since service
+                {(n.vehicle.make || n.vehicle.model) && (
+                  <div style={{ fontSize: '11px', color: 'var(--cd-text-muted)' }}>
+                    {[n.vehicle.make, n.vehicle.model].filter(Boolean).join(' · ')}
                   </div>
                 )}
               </SectionCard>

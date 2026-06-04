@@ -15,6 +15,8 @@ export interface VehicleContext {
   id: string;
   type: 'truck' | 'tanker' | 'van';
   last_maintenance: string;
+  make?: string;
+  model?: string;
 }
 
 export interface EnvironmentContext {
@@ -44,6 +46,7 @@ export interface SafetyNotification {
   environment: EnvironmentContext;
   analysis: SafeIQAnalysis | null;
   analysisLoading: boolean;
+  eventCount: number;
 }
 
 const MOCK_INCIDENTS: Omit<SafetyNotification, 'analysisLoading'>[] = [
@@ -158,7 +161,7 @@ export function useSafeIQ() {
     MOCK_INCIDENTS.forEach((incident, index) => {
       const delay = index * 2500;
       const t = setTimeout(() => {
-        const notification: SafetyNotification = { ...incident, analysisLoading: false };
+        const notification: SafetyNotification = { ...incident, analysisLoading: false, eventCount: 1 };
         setNotifications(prev => [notification, ...prev]);
       }, delay);
       timers.push(t);
