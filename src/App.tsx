@@ -8,6 +8,7 @@ import SafetyVault from './pages/SafetyVault';
 import ReportsReviews from './pages/ReportsReviews';
 import Operations from './pages/Operations';
 import Settings from './pages/Settings';
+import Maintenance from './pages/Maintenance';
 
 export default function App() {
   return (
@@ -31,6 +32,7 @@ export default function App() {
 
             {/* Safety Vault */}
             <Route path="/vault" element={<SafetyVault tab="records" />} />
+            <Route path="/vault/safeiq" element={<SafetyVault tab="safeiq" />} />
             <Route path="/vault/investigations" element={<SafetyVault tab="investigations" />} />
             <Route path="/vault/actions" element={<SafetyVault tab="actions" />} />
             <Route path="/vault/acknowledgements" element={<SafetyVault tab="acknowledgements" />} />
@@ -50,6 +52,9 @@ export default function App() {
             <Route path="/operations/utilization" element={<Operations tab="utilization" />} />
             <Route path="/operations/productivity" element={<Operations tab="productivity" />} />
             <Route path="/operations/economics" element={<Operations tab="economics" />} />
+
+            {/* Maintenance */}
+            <Route path="/maintenance" element={<Maintenance />} />
 
             {/* Settings */}
             <Route path="/settings" element={<Navigate to="/settings/general" replace />} />

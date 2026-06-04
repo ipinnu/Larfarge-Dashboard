@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
 import { Menu, Bell, Search, UserCircle, ShieldAlert } from 'lucide-react';
 import Sidebar from './Sidebar';
 import ARIAChat from '../ARIAChat';
@@ -19,6 +19,7 @@ function getPageTitle(pathname: string): { title: string; sub: string } {
     '/incidents/analysis': { title: 'Incident Intelligence', sub: '— analysis' },
     '/incidents/response': { title: 'Incident Intelligence', sub: '— response tracking' },
     '/vault': { title: 'Safety Vault', sub: '— incident records' },
+    '/vault/safeiq': { title: 'Safety Vault', sub: '— SafeIQ analysis' },
     '/vault/investigations': { title: 'Safety Vault', sub: '— investigations' },
     '/vault/actions': { title: 'Safety Vault', sub: '— corrective actions' },
     '/vault/acknowledgements': { title: 'Safety Vault', sub: '— acknowledgements' },
@@ -31,6 +32,7 @@ function getPageTitle(pathname: string): { title: string; sub: string } {
     '/operations/utilization': { title: 'Operations', sub: '— utilization' },
     '/operations/productivity': { title: 'Operations', sub: '— productivity' },
     '/operations/economics': { title: 'Operations', sub: '— asset economics' },
+    '/maintenance': { title: 'Maintenance', sub: '— scheduling & service' },
     '/settings/general': { title: 'Settings', sub: '— general' },
     '/settings/thresholds': { title: 'Settings', sub: '— alert thresholds' },
     '/settings/api': { title: 'Settings', sub: '— API connections' },
@@ -67,9 +69,13 @@ function NotifPanel({ notifications, onOpen, onDismiss, onClose }: {
     }}>
       <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>SafeIQ Notifications</span>
-        {notifications.length > 0 && (
-          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>{notifications.length} stored</span>
-        )}
+        <Link
+          to="/vault/safeiq"
+          onClick={onClose}
+          style={{ fontSize: 11, color: '#0078D4', textDecoration: 'none', fontWeight: 600 }}
+        >
+          View All →
+        </Link>
       </div>
 
       {notifications.length === 0 ? (

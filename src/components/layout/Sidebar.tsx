@@ -7,6 +7,7 @@ import {
   FileBarChart2, Calendar, BarChart3, Target, Folder,
   Truck, Percent, Clock, DollarSign,
   Settings, ChevronDown, Sun, Moon, LogOut,
+  ShieldAlert, ClipboardList,
 } from 'lucide-react';
 import { useFleet } from '../../context/FleetContext';
 
@@ -47,6 +48,7 @@ const NAV: NavGroup[] = [
     path: '/vault', icon: Lock, label: 'Safety Vault',
     children: [
       { path: '/vault', label: 'Incident Records', icon: FileText },
+      { path: '/vault/safeiq', label: 'SafeIQ Analysis', icon: ShieldAlert },
       { path: '/vault/investigations', label: 'Investigations', icon: Search },
       { path: '/vault/actions', label: 'Corrective Actions', icon: Wrench },
       { path: '/vault/acknowledgements', label: 'Acknowledgements', icon: MessageSquare },
@@ -71,6 +73,7 @@ const NAV: NavGroup[] = [
       { path: '/operations/economics', label: 'Asset Economics', icon: DollarSign },
     ],
   },
+  { path: '/maintenance', icon: Wrench, label: 'Maintenance' },
 ];
 
 const PINNED: NavGroup = { path: '/settings', icon: Settings, label: 'Settings', pinned: true };

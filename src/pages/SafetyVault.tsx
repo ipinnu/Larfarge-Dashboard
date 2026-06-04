@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { Plus, Download, Shield, Clock, CheckCircle, AlertCircle, Search } from 'lucide-react';
+import { Plus, Download, Shield, Clock, CheckCircle, AlertCircle, Search, ShieldAlert, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { useFleet } from '../context/FleetContext';
 import type { VaultRecord } from '../context/FleetContext';
+import SafetyIncidentModal from '../components/SafetyIncidentModal';
+import type { SafetyNotification } from '../hooks/useSafeIQ';
 
 type StatusFilter = 'all' | 'open' | 'in_review' | 'resolved';
 type SeverityFilter = 'all' | 'RED' | 'YELLOW' | 'GREEN';
@@ -325,14 +327,15 @@ function exportISO(records: VaultRecord[]) {
   URL.revokeObjectURL(url);
 }
 
-type VaultTab = 'records' | 'investigations' | 'actions' | 'acknowledgements' | 'audit';
+type VaultTab = 'records' | 'investigations' | 'actions' | 'acknowledgements' | 'audit' | 'safeiq';
 
 export default function SafetyVault({ tab = 'records' }: { tab?: VaultTab }) {
   const [showNewModal, setShowNewModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>('all');
   const [search, setSearch] = useState('');
-  const { vaultRecords, addVaultRecord, updateVaultRecord, events } = useFleet();
+  const [selectedNotif, setSelectedNotif] = useState<any | null>(null);
+  const { vaultRecords, addVaultRecord, updateVaultRecord, events, notifications, dismissNotification, openNotification, closeNotification, selectedNotification } = useFleet();
 
   const filtered = vaultRecords.filter(r => {
     if (statusFilter !== 'all' && r.status !== statusFilter) return false;
@@ -465,8 +468,13 @@ export default function SafetyVault({ tab = 'records' }: { tab?: VaultTab }) {
         <NewRecordModal onClose={() => setShowNewModal(false)} onSave={addVaultRecord} />
       )}
 
+      {/* SafeIQ tab */}
+      {tab === 'safeiq' && (
+        <SafeIQTab notifications={notifications} onOpen={openNotification} onDismiss={dismissNotification} />
+      )}
+
       {/* Non-records tabs */}
-      {tab !== 'records' && (
+      {tab !== 'records' && tab !== 'safeiq' && (
         <div className="bpl-card" style={{ padding: '40px', textAlign: 'center', marginTop: 20 }}>
           <Shield size={36} color="var(--cd-border)" style={{ margin: '0 auto 14px' }} />
           <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--cd-text)', marginBottom: 8, fontFamily: 'var(--cd-font-display)' }}>
@@ -487,6 +495,130 @@ export default function SafetyVault({ tab = 'records' }: { tab?: VaultTab }) {
           <span className="bpl-badge-coming-soon" style={{ fontSize: 11, padding: '4px 12px' }}>Coming Soon</span>
         </div>
       )}
+
+      {selectedNotification && (
+        <SafetyIncidentModal notification={selectedNotification} onClose={closeNotification} />
+      )}
+    </div>
+  );
+}
+
+function severityColor(s: string) {
+  if (s === 'RED') return '#CC0000';
+  if (s === 'YELLOW') return '#d97706';
+  return '#16a34a';
+}
+
+function timeAgo(ts: string) {
+  const diff = Math.floor((Date.now() - new Date(ts).getTime()) / 1000);
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
+function SafeIQTab({ notifications, onOpen, onDismiss }: {
+  notifications: SafetyNotification[];
+  onOpen: (n: SafetyNotification) => void;
+  onDismiss: (id: string) => void;
+}) {
+  if (notifications.length === 0) {
+    return (
+      <div className="bpl-card" style={{ padding: '40px', textAlign: 'center', marginTop: 20 }}>
+        <ShieldAlert size={36} color="var(--cd-border)" style={{ margin: '0 auto 14px' }} />
+        <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--cd-text)', marginBottom: 8 }}>No SafeIQ analyses yet</div>
+        <div style={{ fontSize: 13, color: 'var(--cd-text-muted)' }}>Analyses appear here when drivers cross incident thresholds</div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {notifications.map(n => {
+        const severity = n.analysis?.severity ?? 'GREEN';
+        const accent = severityColor(severity);
+        const trend = n.driver.improvement_trend;
+        return (
+          <div
+            key={n.id}
+            className="bpl-card"
+            style={{ padding: '20px 24px', borderLeft: `4px solid ${accent}`, cursor: 'pointer' }}
+            onClick={() => onOpen(n)}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <ShieldAlert size={16} style={{ color: accent }} />
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--cd-text)' }}>{n.driver.name}</div>
+                  <div style={{ fontSize: 11, color: 'var(--cd-text-muted)', marginTop: 2 }}>
+                    {n.vehicle.id}{n.vehicle.make ? ` · ${n.vehicle.make}` : ''} · {timeAgo(n.timestamp)}
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {severity !== 'GREEN' && (
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 9999,
+                    background: severity === 'RED' ? '#fef2f2' : '#fffbeb',
+                    color: accent, border: `1px solid ${accent}40`,
+                  }}>{severity}</span>
+                )}
+                <button onClick={e => { e.stopPropagation(); onDismiss(n.id); }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--cd-text-muted)', padding: 4 }}>
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: n.analysis ? 14 : 0 }}>
+              <div>
+                <div style={{ fontSize: 10, color: 'var(--cd-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Event</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--cd-text)' }}>{n.magnitude}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 10, color: 'var(--cd-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Incidents / 30d</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: accent }}>{n.eventCount}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 10, color: 'var(--cd-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Safety Score</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: severityColor(n.driver.safety_score_baseline >= 80 ? 'GREEN' : n.driver.safety_score_baseline >= 60 ? 'YELLOW' : 'RED') }}>
+                  {n.driver.safety_score_baseline}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 10, color: 'var(--cd-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Trend</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600,
+                  color: trend === 'improving' ? '#16a34a' : trend === 'declining' ? '#CC0000' : '#d97706' }}>
+                  {trend === 'improving' ? <TrendingUp size={12} /> : trend === 'declining' ? <TrendingDown size={12} /> : <Minus size={12} />}
+                  {trend}
+                </div>
+              </div>
+            </div>
+
+            {n.analysis && (
+              <div style={{ borderTop: '1px solid var(--cd-border)', paddingTop: 12 }}>
+                <div style={{ fontSize: 12, color: 'var(--cd-text)', lineHeight: 1.6, marginBottom: 6 }}>
+                  <span style={{ fontWeight: 700, color: 'var(--cd-text-muted)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 6 }}>Severity</span>
+                  {n.analysis.severity_reason}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--cd-text-muted)', lineHeight: 1.6 }}>
+                  <span style={{ fontWeight: 700, color: 'var(--cd-text-muted)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 6 }}>Coaching</span>
+                  {n.analysis.coaching_recommendation}
+                </div>
+                {n.analysis.ops_flag && (
+                  <div style={{ marginTop: 8, padding: '8px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, fontSize: 12, color: '#991b1b' }}>
+                    ⚠️ <strong>Ops Flag:</strong> {n.analysis.ops_flag_reason}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div style={{ marginTop: 10, fontSize: 11, color: 'var(--cd-accent)', fontWeight: 600 }}>
+              Click for full analysis →
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
