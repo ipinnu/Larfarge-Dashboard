@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Search, ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus, Phone } from 'lucide-react';
 import { useFleet } from '../context/FleetContext';
 import type { LogEntry } from '../context/FleetContext';
@@ -32,7 +33,7 @@ function computeScore(counts: { harshBraking: number; harshAccel: number; oversp
   s -= counts.overspeeding * 2;
   s -= counts.cornering * 1;
   s -= counts.panic * 8;
-  return Math.max(0, Math.min(100, Math.round(s)));
+  return Math.max(35, Math.min(100, Math.round(s)));
 }
 
 function ScoreBar({ score }: { score: number }) {
@@ -184,10 +185,20 @@ function DriverCard({ driver, expanded, onToggle }: { driver: DriverProfile; exp
 type DriverTab = 'drivers' | 'coaching' | 'training' | 'certifications';
 
 export default function DriverManagement({ tab = 'drivers' }: { tab?: DriverTab }) {
-  const [search, setSearch] = useState('');
+  const [searchParams] = useSearchParams();
+  const [search, setSearch] = useState(() => searchParams.get('q') ?? '');
   const [dateRange, setDateRange] = useState<DateRange>('30days');
   const [expandedDrivers, setExpandedDrivers] = useState<Set<string>>(new Set());
   const { events } = useFleet();
+
+  // Auto-expand the driver that matches a ?q= deep-link from SafeIQ
+  useEffect(() => {
+    const q = searchParams.get('q');
+    if (!q) return;
+    setSearch(q);
+    setExpandedDrivers(new Set([q]));
+    setDateRange('alltime');
+  }, []);
 
   const filtered = useMemo(() => {
     const now = Date.now();

@@ -8,14 +8,21 @@ import AnomaliesTable from '../components/AnomaliesTable';
 import MapView from '../components/MapView';
 import GroupedView from '../components/GroupedView';
 
-type StatusFilter = 'All' | 'Moving' | 'Idle' | 'Excessive Idle' | 'Stationary' | 'Parked' | 'Offline' | 'Inactive';
+type StatusFilter = 'All' | 'Moving' | 'Idle' | 'Excessive Idle' | 'Stationary' | 'Parked' | 'Inactive';
 type ViewMode = 'table' | 'map' | 'grouped';
 
 const HIDDEN_LABELS = ['Possible Power Tamper', 'Battery Disconnection', 'Battery Disconnected', 'Front Panel Tamper', 'Back Panel Tamper', 'No Blue Key'];
 
 function ScoreGauge({ score, delta, events, vehicleCount }: { score: number; delta: number; events: any[]; vehicleCount: number }) {
-  const color = score >= 80 ? '#16a34a' : score >= 60 ? '#d97706' : '#CC0000';
-  const label = score >= 80 ? 'Good' : score >= 60 ? 'Needs Attention' : 'Critical';
+  const color = score >= 80 ? '#16a34a' : score >= 60 ? '#d97706' : score >= 45 ? '#e05c2a' : '#CC0000';
+  const label = score >= 80 ? 'Good Standing' : score >= 60 ? 'Needs Attention' : score >= 45 ? 'Below Average' : 'Poor Performance';
+  const sublabel = score >= 80
+    ? 'Fleet operating within safe parameters'
+    : score >= 60
+    ? 'Some driving behaviour requires follow-up'
+    : score >= 45
+    ? 'Incident rate above fleet benchmark — coaching recommended'
+    : 'High incident frequency — immediate driver review advised';
 
   const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
   const recent = events.filter(e => new Date(e.eventTime || e.timestamp).getTime() >= thirtyDaysAgo);
@@ -49,7 +56,8 @@ function ScoreGauge({ score, delta, events, vehicleCount }: { score: number; del
         </div>
 
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 17, fontWeight: 700, color, fontFamily: 'var(--cd-font-display)', lineHeight: 1, marginBottom: 5 }}>{label}</div>
+          <div style={{ fontSize: 17, fontWeight: 700, color, fontFamily: 'var(--cd-font-display)', lineHeight: 1, marginBottom: 3 }}>{label}</div>
+          <div style={{ fontSize: 10, color: 'var(--cd-text-muted)', marginBottom: 7, lineHeight: 1.4 }}>{sublabel}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, marginBottom: 8 }}>
             {delta > 0 ? (
               <><TrendingUp size={12} color="#16a34a" /><span style={{ color: '#16a34a', fontWeight: 600 }}>+{delta} pt{Math.abs(delta) !== 1 ? 's' : ''} vs last month</span></>
@@ -226,11 +234,13 @@ export default function Dashboard() {
   const { metadata, vehicles, events, fleetSafetyScore, fleetScoreDelta, authFetch } = useFleet();
 
   const stats = [
-    { label: 'Total Fleet', value: metadata.totalVehicles, icon: Truck, color: '#0078D4', filter: 'All' as StatusFilter },
-    { label: 'Moving', value: metadata.moving, icon: Navigation, color: '#16a34a', filter: 'Moving' as StatusFilter },
-    { label: 'Parked', value: metadata.parked, icon: MapPin, color: '#7C3AED', filter: 'Parked' as StatusFilter },
-    { label: 'Idle', value: metadata.idle + metadata.excessiveIdle, icon: Clock, color: '#d97706', filter: 'Idle' as StatusFilter },
-    { label: 'Offline', value: metadata.offline, icon: Activity, color: '#6B7A8D', filter: 'Offline' as StatusFilter },
+    { label: 'Total Fleet',    value: vehicles.length,          icon: Truck,       color: '#0078D4', filter: 'All' as StatusFilter,           tooltip: 'All active vehicles in the fleet' },
+    { label: 'Moving',         value: metadata.moving,         icon: Navigation,  color: '#16a34a', filter: 'Moving' as StatusFilter,         tooltip: 'Actively travelling above 5 km/h' },
+    { label: 'Idle',           value: metadata.idle,           icon: Clock,       color: '#d97706', filter: 'Idle' as StatusFilter,           tooltip: 'Engine running, vehicle not moving' },
+    { label: 'Excessive Idle', value: metadata.excessiveIdle,  icon: Clock,       color: '#b45309', filter: 'Excessive Idle' as StatusFilter, tooltip: 'Idling beyond the acceptable threshold' },
+    { label: 'Stationary',     value: metadata.stationary,     icon: MapPin,      color: '#0d9488', filter: 'Stationary' as StatusFilter,     tooltip: 'Not moving for less than 1 hour' },
+    { label: 'Parked',         value: metadata.parked,         icon: MapPin,      color: '#7C3AED', filter: 'Parked' as StatusFilter,         tooltip: 'Stationary between 1 and 24 hours' },
+    { label: 'Temp Inactive', value: metadata.inactive + metadata.offline, icon: Activity, color: '#2563eb', filter: 'Inactive' as StatusFilter, tooltip: 'Temporarily offline (24h+) or inactive (30+ days)' },
   ];
 
   const handleMapAcknowledge = async (id: string) => {
@@ -255,31 +265,38 @@ export default function Dashboard() {
       <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 14, marginBottom: 20 }}>
         <ScoreGauge score={fleetSafetyScore} delta={fleetScoreDelta} events={events} vehicleCount={vehicles.length} />
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
           {stats.map(s => {
             const Icon = s.icon;
             const isActive = statusFilter === s.filter || (s.filter === 'All' && statusFilter === 'All');
+            const pct = s.filter !== 'All' && metadata.totalVehicles > 0
+              ? Math.round((s.value / metadata.totalVehicles) * 100)
+              : null;
             return (
               <button
                 key={s.label}
-                onClick={() => setStatusFilter(s.filter === 'All' ? 'All' : s.filter)}
+                title={s.tooltip}
+                onClick={() => setStatusFilter(s.filter)}
                 className="bpl-card"
                 style={{
-                  padding: '14px 16px', cursor: 'pointer', textAlign: 'left',
+                  padding: '12px 14px', cursor: 'pointer', textAlign: 'left',
                   borderTopColor: s.color, borderTopWidth: 3,
                   background: isActive ? `${s.color}10` : undefined,
                   outline: isActive ? `1.5px solid ${s.color}40` : 'none',
                   transition: 'all 0.15s ease',
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
                   <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--cd-text-muted)' }}>
                     {s.label}
                   </span>
-                  <Icon size={14} style={{ color: s.color, opacity: 0.6 }} />
+                  <Icon size={13} style={{ color: s.color, opacity: 0.6 }} />
                 </div>
-                <div style={{ fontSize: 28, fontWeight: 700, color: s.color, lineHeight: 1, fontFamily: 'var(--cd-font-display)' }}>
+                <div style={{ fontSize: 24, fontWeight: 700, color: s.color, lineHeight: 1, fontFamily: 'var(--cd-font-display)' }}>
                   {s.value}
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--cd-text-muted)', marginTop: 5 }}>
+                  {pct !== null ? `${pct}% of fleet` : 'active vehicles'}
                 </div>
               </button>
             );

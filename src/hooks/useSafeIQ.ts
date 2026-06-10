@@ -21,8 +21,17 @@ export interface VehicleContext {
 
 export interface EnvironmentContext {
   weather: string;
+  weather_condition?: string;
+  temperature_c?: number;
+  humidity_pct?: number;
+  precipitation_mm?: number;
   traffic_density: 'light' | 'moderate' | 'heavy';
+  traffic_description?: string;
+  current_speed_kmh?: number;
+  free_flow_speed_kmh?: number;
+  traffic_delay_pct?: number;
   road_type: 'highway' | 'urban' | 'rural';
+  environment_source?: { weather: string; traffic: string };
 }
 
 export interface SafeIQAnalysis {

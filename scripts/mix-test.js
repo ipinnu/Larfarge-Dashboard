@@ -45,7 +45,18 @@ let tokenExpiresAt = 0;
 
 const PANIC_EVENT_TYPE_ID = '-4444421556390778105';
 const IDLE_EVENT_TYPE_ID = '-3393530750645328945';
-const EXCESSIVE_IDLE_EVENT_TYPE_ID = '4650840888823746894';
+const EXCESSIVE_IDLE_EVENT_TYPE_ID = '4650840888823746694';
+const FUEL_PROBE_1MIN_TICKER_EVENT_TYPE_ID = '-6061736210584957932';
+const FUEL_PROBE_5MIN_TICKER_EVENT_TYPE_ID = '7835540334200528539';
+const FUEL_PROBE_TRIP_START_EVENT_TYPE_ID = '7732808521542418259';
+const FUEL_PROBE_TRIP_END_EVENT_TYPE_ID = '-1651664568698074374';
+
+const FUEL_PROBE_EVENT_IDS = new Set([
+  FUEL_PROBE_1MIN_TICKER_EVENT_TYPE_ID,
+  FUEL_PROBE_5MIN_TICKER_EVENT_TYPE_ID,
+  FUEL_PROBE_TRIP_START_EVENT_TYPE_ID,
+  FUEL_PROBE_TRIP_END_EVENT_TYPE_ID,
+]);
 
 const WARNING_EVENT_TYPES = {
   '4750800303282680186': 'Harsh Braking',
@@ -60,6 +71,10 @@ const triggeredWarningEvents = new Map();
 
 const idleEventVehicles = new Set();
 const excessiveIdleVehicles = new Set();
+
+// assetId (string) → { level: number, timestamp: string }
+const fuelLevels = new Map();
+let fuelProbeRawLogged = false;
 
 let driverLookup = new Map();
 let vehicleLookup = new Map();
@@ -506,6 +521,8 @@ async function getLatestActiveEvents(token) {
         latitude: e.Position?.Latitude || null,
         longitude: e.Position?.Longitude || null,
         address: formattedAddress || null,
+        speed: e.Speed ?? e.SpeedKilometresPerHour ?? e.Position?.Speed ?? null,
+        speedLimit: e.SpeedLimit ?? e.ZoneSpeedLimit ?? e.Position?.SpeedLimit ?? null,
       });
     }).join('\n') + '\n';
     fs.appendFileSync(eventsLogPath, logEntries);
@@ -537,6 +554,63 @@ async function getLatestActiveEvents(token) {
     });
   }
 
+  // Handle fuel probe events (1min ticker, 5min ticker, trip start/end fuel levels)
+  const fuelProbeEvents = parsed.filter(e => FUEL_PROBE_EVENT_IDS.has(e.EventTypeId));
+  if (fuelProbeEvents.length > 0) {
+    const fuelHistoryPath = path.join(process.cwd(), 'fuel-history.log');
+    const historyLines = [];
+    fuelProbeEvents.forEach(e => {
+      const assetId = e.AssetId?.toString();
+      if (!assetId) return;
+      const level = e.Value ?? e.EventValue ?? e.FuelLevel ?? e.FuelLevelPercentage ?? e.ValueNumber ?? null;
+      const ts = e.EventDateTime ?? new Date().toISOString();
+      if (level !== null && level !== undefined) {
+        const parsed = Math.max(0, parseFloat(level));
+        fuelLevels.set(assetId, { level: parsed, timestamp: ts });
+        historyLines.push(JSON.stringify({ assetId, level: parsed, timestamp: ts }));
+        console.log(`⛽ Fuel Probe — AssetId: ${assetId} | Level: ${parsed}`);
+      }
+      if (!fuelProbeRawLogged) {
+        fuelProbeRawLogged = true;
+        const rawPath = path.join(process.cwd(), 'fuel-probe-raw.log');
+        fs.writeFileSync(rawPath, JSON.stringify(e, null, 2));
+        console.log(`📝 Raw fuel probe event saved to fuel-probe-raw.log`);
+      }
+    });
+    if (historyLines.length > 0) {
+      fs.appendFileSync(fuelHistoryPath, historyLines.join('\n') + '\n');
+    }
+  }
+
+  // Log all unknown event type IDs so we can discover new ones (e.g. Fuel Probe)
+  const knownIds = new Set([
+    PANIC_EVENT_TYPE_ID, IDLE_EVENT_TYPE_ID, EXCESSIVE_IDLE_EVENT_TYPE_ID,
+    ...FUEL_PROBE_EVENT_IDS,
+    ...Object.keys(WARNING_EVENT_TYPES),
+  ]);
+  const unknownEvents = parsed.filter(e => e.EventTypeId && !knownIds.has(e.EventTypeId));
+  if (unknownEvents.length > 0) {
+    const unknownMap = new Map();
+    unknownEvents.forEach(e => {
+      const id = e.EventTypeId?.toString();
+      const name = e.EventTypeName ?? e.EventType ?? e.Description ?? 'N/A';
+      if (!unknownMap.has(id)) unknownMap.set(id, { name, count: 0, sample: e });
+      unknownMap.get(id).count++;
+    });
+    const unknownLogPath = path.join(process.cwd(), 'unknown-events.log');
+    unknownMap.forEach(({ name, count, sample }, id) => {
+      console.log(`🔍 Unknown EventTypeId: ${id} | Name: ${name} | Count: ${count}`);
+      fs.appendFileSync(unknownLogPath, JSON.stringify({
+        timestamp: new Date().toISOString(),
+        eventTypeId: id,
+        eventTypeName: name,
+        count,
+        sampleAssetId: sample.AssetId,
+        sampleEventTime: sample.EventDateTime,
+      }) + '\n');
+    });
+  }
+
   return parsed;
 }
 
@@ -546,7 +620,10 @@ function mergeData(positions) {
     positionsByAsset.set(p.AssetId?.toString(), p);
   });
 
-  return Array.from(vehicleLookup.values()).map(vehicle => {
+  return Array.from(vehicleLookup.values()).filter(vehicle => {
+    const siteInfo = siteLookup.get(vehicle.SiteId?.toString());
+    return (siteInfo?.name || '') !== 'XN - Decommissioned';
+  }).map(vehicle => {
     const assetId = vehicle.AssetId?.toString();
     const pos = positionsByAsset.get(assetId);
 
@@ -599,6 +676,7 @@ function mergeData(positions) {
       date: pos?.Timestamp || new Date().toISOString(),
       panic: hasPanic,
       warnings: warningEvents,
+      fuelLevel: fuelLevels.get(assetId) ?? null,
       position: pos ? {
         latitude: pos.Latitude,
         longitude: pos.Longitude,
@@ -683,7 +761,7 @@ export async function pollOnce() {
       const metadata = {
         lastUpdate: new Date().toISOString(),
         runNumber: runCount,
-        totalVehicles: vehicleLookup.size,
+        totalVehicles: merged.length,
         ...stats
       };
       fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));

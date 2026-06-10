@@ -1,42 +1,45 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import type { SafetyNotification, SafeIQAnalysis } from '../hooks/useSafeIQ';
+import type { SafetyNotification, SafeIQAnalysis, EnvironmentContext } from '../hooks/useSafeIQ';
+import { fetchIncidentEnvironment } from '../services/environment';
+import { lookupSafetyReference, formatReferenceForPrompt } from '../data/safetyReferences';
 
 const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY;
 
 async function generateSafeIQAnalysis(
   e: { label?: string; type: string; driverName?: string; regNo?: string; assetId: string; address?: string; eventTime: string },
   driverIncidents30Days: number,
-  driverTrend: 'improving' | 'stable' | 'declining'
+  driverTrend: 'improving' | 'stable' | 'declining',
+  environment: EnvironmentContext,
+  safetyReference: string | null,
 ): Promise<SafeIQAnalysis | null> {
   if (!ANTHROPIC_API_KEY) return null;
 
   const eventType = e.type === 'panic' ? 'Panic Alert' : (e.label || 'Unknown');
   const driver = e.driverName || 'Unknown Driver';
   const vehicle = e.regNo || e.assetId;
-  const location = e.address || 'Unknown location';
+  const location = e.address || 'Location not available';
   const time = new Date(e.eventTime).toLocaleString('en-GB', { timeZone: 'Africa/Lagos' });
 
-  const prompt = `You are SafeIQ, the fleet safety analysis engine for BPL Fleet Intelligence Platform (Lafarge Nigeria).
+  const prompt = `You are SafeIQ, a safety advisor for BPL Fleet Intelligence Platform (Lafarge Nigeria). Your tone is calm, observational, and advisory — you present findings and let the fleet manager decide. Never command. Suggest, reason, and reference policy as context not instruction.
 
-Analyse this safety event and return a JSON object with exactly these fields:
+Return a JSON object with exactly these fields:
 - severity: "RED", "YELLOW", or "GREEN"
-- severity_reason: one sentence explaining the severity rating
-- root_cause: 2-3 detailed paragraphs analysing the root cause, driver behaviour, road conditions, and systemic factors
-- industry_reference: 1-2 sentences citing relevant FMCSA BASIC categories and FRSC Nigeria guidelines with specific thresholds
-- coaching_recommendation: 2-3 specific, actionable coaching steps for this driver and vehicle
-- ops_flag: true or false (true if immediate supervisor action is required)
-- ops_flag_reason: if ops_flag is true, one paragraph explaining what the operations team must do immediately. Empty string if false.
+- severity_reason: one short sentence on why this severity rating fits
+- root_cause: 2-3 sentences — what likely happened, what may have contributed (conditions, route, pattern). Soft and factual, not accusatory.
+- industry_reference: one sentence — how this driver's pattern compares to industry norms (FRSC Nigeria / FMCSA). Frame it as context e.g. "drivers with X+ incidents in 30 days are typically considered..."
+- coaching_recommendation: 2-3 short suggestions framed around company policy — e.g. "depending on your policy, you may want to consider a brief retraining period" or "keeping a closer eye on this driver over the next few weeks could be worth it"
+- ops_flag: true or false
+- ops_flag_reason: if true, one calm sentence on what the supervisor may want to look into. Empty string if false.
 
-Event details:
+Event:
 - Type: ${eventType}
-- Driver: ${driver}
-- Vehicle: ${vehicle}
-- Location: ${location}
-- Time (WAT): ${time}
-- Driver incidents last 30 days: ${driverIncidents30Days}
-- Driver trend: ${driverTrend}
+- Driver: ${driver} (${driverIncidents30Days} incidents last 30 days, trend: ${driverTrend})
+- Vehicle: ${vehicle} | Location: ${location} | Time: ${time}
+- Weather: ${environment.weather} | Traffic: ${environment.traffic_description || environment.traffic_density} | Road: ${environment.road_type}
+${environment.precipitation_mm ? `- Precipitation: ${environment.precipitation_mm}mm` : ''}
+${safetyReference ? `\nIndustry context (use as soft reference only):\n${safetyReference}` : ''}
 
-Return only valid JSON, no markdown, no explanation outside the JSON object.`;
+Return only valid JSON, no markdown, nothing outside the JSON object.`;
 
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -48,8 +51,8 @@ Return only valid JSON, no markdown, no explanation outside the JSON object.`;
         'anthropic-dangerous-direct-browser-access': 'true',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 700,
         temperature: 0,
         messages: [{ role: 'user', content: prompt }],
       }),
@@ -92,6 +95,8 @@ export interface LogEntry {
   driverName?: string;
   driverPhone?: string;
   address?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   eventId: string;
   eventType?: string;
   label?: string;
@@ -104,6 +109,7 @@ export interface Vehicle {
   regNo: string;
   transporter: string;
   assetName: string;
+  site?: string;
   make?: string;
   model?: string;
   status: string;
@@ -151,7 +157,7 @@ function computeFleetScore(events: LogEntry[], vehicleCount: number): { score: n
       else if (e.label === 'Harsh Cornering') deduction += 1;
       else if (e.type === 'panic') deduction += 5;
     });
-    return Math.max(0, Math.min(100, Math.round(100 - deduction * scale)));
+    return Math.max(30, Math.min(100, Math.round(100 - deduction * scale)));
   };
 
   const recent = events.filter(e => new Date(e.eventTime || e.timestamp).getTime() >= thirtyDaysAgo);
@@ -175,6 +181,7 @@ interface FleetContextType {
   redAlertCount: number;
   notifications: SafetyNotification[];
   dismissNotification: (id: string) => void;
+  clearAllNotifications: () => void;
   selectedNotification: SafetyNotification | null;
   openNotification: (n: SafetyNotification) => void;
   closeNotification: () => void;
@@ -238,7 +245,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await authFetch('/api/data');
       if (res.ok) {
-        const data = await res.json();
+        const data = (await res.json()).filter((v: Vehicle) => v.site !== 'XN - Decommissioned');
         vehiclesRef.current = data;
         setVehicles(data);
       }
@@ -315,7 +322,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
           if (toAnalyse.length > 0) {
             const newNotifs: SafetyNotification[] = toAnalyse.map(e => {
               const stats = getDriverStats(e.driverName);
-              const scoreBaseline = Math.max(0, Math.min(100, 100 - stats.incidents * 3));
+              const scoreBaseline = Math.max(35, Math.min(100, 100 - stats.incidents * 3));
               const vehicleRecord = vehiclesRef.current.find(v => v.id === e.assetId?.toString() || v.regNo === e.regNo);
               return {
                 id: e.eventId,
@@ -323,7 +330,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
                   e.label === 'Harsh Acceleration' ? 'harsh_acceleration' : 'harsh_braking',
                 magnitude: e.label || 'Unknown',
                 timestamp: e.eventTime || e.timestamp,
-                location: e.address || 'Unknown location',
+                location: e.address || '',
                 eventCount: stats.incidents,
                 driver: {
                   id: e.assetId,
@@ -340,7 +347,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
                   model: vehicleRecord?.model || '',
                 },
                 environment: {
-                  weather: e.address || 'Unknown location',
+                  weather: 'Loading…',
                   traffic_density: 'moderate',
                   road_type: 'highway',
                 },
@@ -353,7 +360,26 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
 
             toAnalyse.forEach(async e => {
               const stats = getDriverStats(e.driverName);
-              const analysis = await generateSafeIQAnalysis(e, stats.incidents, stats.trend);
+              const vehicleRecord = vehiclesRef.current.find(v => v.id === e.assetId?.toString() || v.regNo === e.regNo);
+              const rawLat = e.latitude ?? vehicleRecord?.position?.latitude;
+              const rawLng = e.longitude ?? vehicleRecord?.position?.longitude;
+              const latitude = rawLat != null ? Number(rawLat) : null;
+              const longitude = rawLng != null ? Number(rawLng) : null;
+
+              const environment = await fetchIncidentEnvironment({
+                latitude: latitude != null && !isNaN(latitude) ? latitude : null,
+                longitude: longitude != null && !isNaN(longitude) ? longitude : null,
+                address: e.address,
+                timestamp: e.eventTime || e.timestamp,
+              });
+
+              setNotifications(prev =>
+                prev.map(n => n.id === e.eventId ? { ...n, environment } : n)
+              );
+
+              const ref = lookupSafetyReference(e.label, e.type);
+              const safetyReference = ref ? formatReferenceForPrompt(ref) : null;
+              const analysis = await generateSafeIQAnalysis(e, stats.incidents, stats.trend, environment, safetyReference);
               setNotifications(prev =>
                 prev.map(n => n.id === e.eventId ? { ...n, analysis, analysisLoading: false } : n)
               );
@@ -382,11 +408,16 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
 
   const { score: fleetSafetyScore, delta: fleetScoreDelta } = computeFleetScore(events, vehicles.length);
 
-  const redAlertCount = notifications.filter(n => n.analysis?.severity === 'RED' || n.type === 'harsh_braking').length;
+  const redAlertCount = notifications.filter(n => n.analysis?.severity === 'RED').length;
 
   const dismissNotification = useCallback((id: string) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
     setSelectedNotification(prev => prev?.id === id ? null : prev);
+  }, []);
+
+  const clearAllNotifications = useCallback(() => {
+    setNotifications([]);
+    setSelectedNotification(null);
   }, []);
 
   const openNotification = useCallback((n: SafetyNotification) => setSelectedNotification(n), []);
@@ -412,7 +443,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
     <FleetContext.Provider value={{
       authFetch, metadata, vehicles, events,
       fleetSafetyScore, fleetScoreDelta, redAlertCount,
-      notifications, dismissNotification, selectedNotification,
+      notifications, dismissNotification, clearAllNotifications, selectedNotification,
       openNotification, closeNotification,
       vaultRecords, addVaultRecord, updateVaultRecord,
       theme, setTheme, isMobile, reloadEvents,

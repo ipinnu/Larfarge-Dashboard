@@ -1,5 +1,44 @@
-import { ShieldAlert, X } from 'lucide-react';
+import { ShieldAlert, X, ExternalLink } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import type { SafetyNotification, Severity } from '../hooks/useSafeIQ';
+import EnvironmentBadge from './EnvironmentBadge';
+
+// ─── keyword highlight ────────────────────────────────────────────────────────
+const DANGER_PATTERN = /\b(harsh braking|harsh acceleration|overspeeding|overspeed tiered|overspeed|cornering|panic alert|panic|tailgating|following distance|speeding|collision|near.miss|critical|immediate action|intervention required)\b/gi;
+const IMPORTANT_PATTERN = /\b(rain|wet|fog|visibility|slippery|heavy traffic|congestion|peak hour|FMCSA|FRSC|ISO 39001|BASIC|threshold|recurring|pattern|behaviour|behavior|trend|escalat)\b/gi;
+
+function HighlightedText({ text }: { text: string }) {
+  const combined = new RegExp(
+    `(?<danger>${DANGER_PATTERN.source})|(?<important>${IMPORTANT_PATTERN.source})`,
+    'gi'
+  );
+
+  const parts: React.ReactNode[] = [];
+  let last = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = combined.exec(text)) !== null) {
+    if (match.index > last) parts.push(text.slice(last, match.index));
+    const isDanger = match.groups?.danger !== undefined;
+    parts.push(
+      <mark key={match.index} style={{
+        fontWeight: 700,
+        color: isDanger ? '#CC0000' : 'inherit',
+        background: isDanger ? 'rgba(204,0,0,0.07)' : 'transparent',
+        borderRadius: isDanger ? 3 : 0,
+        padding: isDanger ? '0 2px' : 0,
+        fontStyle: 'inherit',
+        textDecoration: 'none',
+      }}>
+        {match[0]}
+      </mark>
+    );
+    last = match.index + match[0].length;
+  }
+
+  if (last < text.length) parts.push(text.slice(last));
+  return <>{parts}</>;
+}
 
 interface Props {
   notification: SafetyNotification;
@@ -87,6 +126,12 @@ function SectionCard({ children, style }: { children: React.ReactNode; style?: R
 export default function SafetyIncidentModal({ notification: n, onClose }: Props) {
   const analysis = n.analysis;
   const severity = analysis?.severity ?? 'GREEN';
+  const navigate = useNavigate();
+
+  const goToDriver = () => {
+    onClose();
+    navigate(`/drivers?q=${encodeURIComponent(n.driver.name)}`);
+  };
 
   const overlayStyle: React.CSSProperties = {
     position: 'fixed',
@@ -136,7 +181,7 @@ export default function SafetyIncidentModal({ notification: n, onClose }: Props)
                 {severityEmoji(severity)} {severityText(severity)}
               </span>
               <span style={{ fontSize: '13px', color: 'var(--cd-text)', lineHeight: '1.5' }}>
-                {analysis.severity_reason}
+                <HighlightedText text={analysis.severity_reason} />
               </span>
             </div>
           </div>
@@ -158,19 +203,38 @@ export default function SafetyIncidentModal({ notification: n, onClose }: Props)
                 <div style={{ fontSize: '10px', color: 'var(--cd-text-muted)', marginBottom: '3px', fontWeight: '600' }}>TIME</div>
                 <div style={{ fontSize: '13px', color: 'var(--cd-text)', fontWeight: '500' }}>{formatTimestamp(n.timestamp)}</div>
               </SectionCard>
-              <SectionCard>
-                <div style={{ fontSize: '10px', color: 'var(--cd-text-muted)', marginBottom: '3px', fontWeight: '600' }}>LOCATION</div>
-                <div style={{ fontSize: '13px', color: 'var(--cd-text)', fontWeight: '500' }}>{n.location}</div>
-              </SectionCard>
+              {n.location && (
+                <SectionCard>
+                  <div style={{ fontSize: '10px', color: 'var(--cd-text-muted)', marginBottom: '3px', fontWeight: '600' }}>LOCATION</div>
+                  <div style={{ fontSize: '13px', color: 'var(--cd-text)', fontWeight: '500' }}>{n.location}</div>
+                </SectionCard>
+              )}
             </div>
           </div>
 
-          {/* Section 2 — Driver & Vehicle */}
+          {/* Section 2 — Environment */}
+          <div>
+            <SectionLabel>Environmental Conditions</SectionLabel>
+            <EnvironmentBadge environment={n.environment} />
+          </div>
+
+          {/* Section 3 — Driver & Vehicle */}
           <div>
             <SectionLabel>Driver &amp; Vehicle</SectionLabel>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <SectionCard>
-                <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--cd-text)', marginBottom: '8px' }}>{n.driver.name}</div>
+                <button
+                  onClick={goToDriver}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                    display: 'flex', alignItems: 'center', gap: 6, marginBottom: '6px',
+                  }}
+                >
+                  <span style={{ fontSize: '14px', fontWeight: '700', color: 'var(--cd-accent)', textDecoration: 'underline', textUnderlineOffset: 3 }}>
+                    {n.driver.name}
+                  </span>
+                  <ExternalLink size={11} color="var(--cd-accent)" />
+                </button>
                 <div style={{ fontSize: '11px', color: 'var(--cd-text-muted)', marginBottom: '10px' }}>{n.driver.id}</div>
 
                 <div style={{ fontSize: '10px', color: 'var(--cd-text-muted)', marginBottom: '4px', fontWeight: '600' }}>SAFETY SCORE</div>
@@ -202,35 +266,35 @@ export default function SafetyIncidentModal({ notification: n, onClose }: Props)
             </div>
           </div>
 
-          {/* Section 3 — SafeIQ Analysis */}
+          {/* Section 4 — SafeIQ Analysis */}
           {analysis && (
             <div>
               <SectionLabel>SafeIQ Analysis</SectionLabel>
               <SectionCard>
                 <div style={{ marginBottom: '14px' }}>
                   <div style={{ fontSize: '11px', fontWeight: '700', color: 'var(--cd-text-muted)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: '6px' }}>Root Cause</div>
-                  <div style={{ fontSize: '13px', color: 'var(--cd-text)', lineHeight: '1.6' }}>{analysis.root_cause}</div>
+                  <div style={{ fontSize: '13px', color: 'var(--cd-text)', lineHeight: '1.6' }}><HighlightedText text={analysis.root_cause} /></div>
                 </div>
                 <div style={{ marginBottom: '14px' }}>
                   <div style={{ fontSize: '11px', fontWeight: '700', color: 'var(--cd-text-muted)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: '6px' }}>Industry Reference</div>
-                  <div style={{ fontSize: '12px', color: 'var(--cd-text-muted)', lineHeight: '1.6', fontStyle: 'italic' }}>{analysis.industry_reference}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--cd-text-muted)', lineHeight: '1.6', fontStyle: 'italic' }}><HighlightedText text={analysis.industry_reference} /></div>
                 </div>
                 <div>
                   <div style={{ fontSize: '11px', fontWeight: '700', color: 'var(--cd-text-muted)', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: '6px' }}>Coaching Recommendation</div>
-                  <div style={{ fontSize: '13px', color: 'var(--cd-text)', lineHeight: '1.6' }}>{analysis.coaching_recommendation}</div>
+                  <div style={{ fontSize: '13px', color: 'var(--cd-text)', lineHeight: '1.6' }}><HighlightedText text={analysis.coaching_recommendation} /></div>
                 </div>
               </SectionCard>
             </div>
           )}
 
-          {/* Section 4 — Ops Flag */}
+          {/* Section 5 — Ops Flag */}
           {analysis?.ops_flag && (
             <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', padding: '14px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                 <span style={{ fontSize: '16px' }}>⚠️</span>
                 <span style={{ fontSize: '13px', fontWeight: '700', color: '#dc2626', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>Operations Flag</span>
               </div>
-              <div style={{ fontSize: '13px', color: '#991b1b', lineHeight: '1.6' }}>{analysis.ops_flag_reason}</div>
+              <div style={{ fontSize: '13px', color: '#991b1b', lineHeight: '1.6' }}><HighlightedText text={analysis.ops_flag_reason} /></div>
             </div>
           )}
 

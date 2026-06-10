@@ -174,8 +174,9 @@ function APISettings() {
   const apiKeys = [
     { name: 'MiX Telematics', key: 'VITE_API_SECRET', status: 'connected', desc: 'Live vehicle telemetry and event data' },
     { name: 'Claude (ARIA)', key: 'VITE_ANTHROPIC_API_KEY', status: import.meta.env.VITE_ANTHROPIC_API_KEY ? 'connected' : 'not_configured', desc: 'AI analysis and ARIA chat intelligence' },
-    { name: 'Open-Meteo', key: 'None required', status: 'connected', desc: 'Weather data at vehicle locations — no key needed' },
-    { name: 'Google Maps Traffic', key: 'VITE_GOOGLE_MAPS_API_KEY', status: import.meta.env.VITE_GOOGLE_MAPS_API_KEY ? 'connected' : 'not_configured', desc: 'Real-time traffic density at incident locations' },
+    { name: 'Open-Meteo', key: 'None required', status: 'connected', desc: 'Live weather at incident coordinates via /api/environment' },
+    { name: 'TomTom Traffic', key: 'TOMTOM_API_KEY', status: 'server_side', desc: 'Recommended live traffic provider for Lagos/Nigeria — Traffic Flow API' },
+    { name: 'Google Maps Traffic', key: 'GOOGLE_MAPS_API_KEY', status: 'server_side', desc: 'Backup live traffic provider — falls back to heuristic without key' },
   ];
 
   return (
@@ -192,6 +193,8 @@ function APISettings() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
             {api.status === 'connected' ? (
               <><CheckCircle size={16} color="#16a34a" /><span style={{ fontSize: 12, color: '#16a34a', fontWeight: 600 }}>Connected</span></>
+            ) : api.status === 'server_side' ? (
+              <><AlertCircle size={16} color="#0078D4" /><span style={{ fontSize: 12, color: '#0078D4', fontWeight: 600 }}>Server-side</span></>
             ) : (
               <><XCircle size={16} color="#d97706" /><span style={{ fontSize: 12, color: '#d97706', fontWeight: 600 }}>Not configured</span></>
             )}

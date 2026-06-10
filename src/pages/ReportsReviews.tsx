@@ -77,7 +77,7 @@ function WeeklyReport({ events }: { events: any[] }) {
       <div className="bpl-kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 20 }}>
         <div className="bpl-kpi-card">
           <div className="bpl-kpi-label">Fleet Safety Score</div>
-          <div className="bpl-kpi-value" style={{ color: fleetSafetyScore >= 80 ? '#16a34a' : fleetSafetyScore >= 60 ? '#d97706' : '#CC0000' }}>
+          <div className="bpl-kpi-value" style={{ color: fleetSafetyScore >= 80 ? '#16a34a' : fleetSafetyScore >= 60 ? '#d97706' : fleetSafetyScore >= 45 ? '#e05c2a' : '#CC0000' }}>
             {fleetSafetyScore}
           </div>
           <div className="bpl-kpi-sub">

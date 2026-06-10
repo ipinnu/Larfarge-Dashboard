@@ -4,6 +4,7 @@ import { useFleet } from '../context/FleetContext';
 import type { VaultRecord } from '../context/FleetContext';
 import SafetyIncidentModal from '../components/SafetyIncidentModal';
 import type { SafetyNotification } from '../hooks/useSafeIQ';
+import { formatEnvironmentLine } from '../components/EnvironmentBadge';
 
 type StatusFilter = 'all' | 'open' | 'in_review' | 'resolved';
 type SeverityFilter = 'all' | 'RED' | 'YELLOW' | 'GREEN';
@@ -569,6 +570,12 @@ function SafeIQTab({ notifications, onOpen, onDismiss }: {
                 </button>
               </div>
             </div>
+
+            {n.environment.weather !== 'Loading…' && (
+              <div style={{ fontSize: 12, color: 'var(--cd-text-muted)', marginBottom: 12 }}>
+                {formatEnvironmentLine(n.environment)}
+              </div>
+            )}
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: n.analysis ? 14 : 0 }}>
               <div>

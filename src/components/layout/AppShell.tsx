@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, Bell, Search, UserCircle, ShieldAlert } from 'lucide-react';
 import Sidebar from './Sidebar';
 import ARIAChat from '../ARIAChat';
@@ -7,6 +7,7 @@ import SafetyToast from '../SafetyToast';
 import SafetyIncidentModal from '../SafetyIncidentModal';
 import { useFleet } from '../../context/FleetContext';
 import type { SafetyNotification } from '../../hooks/useSafeIQ';
+import EnvironmentBadge from '../EnvironmentBadge';
 
 function getPageTitle(pathname: string): { title: string; sub: string } {
   const map: Record<string, { title: string; sub: string }> = {
@@ -32,6 +33,7 @@ function getPageTitle(pathname: string): { title: string; sub: string } {
     '/operations/utilization': { title: 'Operations', sub: '— utilization' },
     '/operations/productivity': { title: 'Operations', sub: '— productivity' },
     '/operations/economics': { title: 'Operations', sub: '— asset economics' },
+    '/operations/fuel': { title: 'Operations', sub: '— fuel monitoring' },
     '/maintenance': { title: 'Maintenance', sub: '— scheduling & service' },
     '/settings/general': { title: 'Settings', sub: '— general' },
     '/settings/thresholds': { title: 'Settings', sub: '— alert thresholds' },
@@ -54,10 +56,11 @@ function timeAgo(ts: string) {
   return `${Math.floor(diff / 3600)}h ago`;
 }
 
-function NotifPanel({ notifications, onOpen, onDismiss, onClose }: {
+function NotifPanel({ notifications, onOpen, onDismiss, onClearAll, onClose }: {
   notifications: SafetyNotification[];
   onOpen: (n: SafetyNotification) => void;
   onDismiss: (id: string) => void;
+  onClearAll: () => void;
   onClose: () => void;
 }) {
   return (
@@ -68,14 +71,30 @@ function NotifPanel({ notifications, onOpen, onDismiss, onClose }: {
       zIndex: 200, overflow: 'hidden',
     }}>
       <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>SafeIQ Notifications</span>
-        <Link
-          to="/vault/safeiq"
-          onClick={onClose}
-          style={{ fontSize: 11, color: '#0078D4', textDecoration: 'none', fontWeight: 600 }}
-        >
-          View All →
-        </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>SafeIQ Notifications</span>
+          {notifications.length > 0 && (
+            <span style={{
+              fontSize: 10, fontWeight: 700, background: 'rgba(255,255,255,0.1)',
+              color: 'rgba(255,255,255,0.5)', borderRadius: 99, padding: '1px 6px',
+            }}>{notifications.length}</span>
+          )}
+        </div>
+        {notifications.length > 0 && (
+          <button
+            onClick={() => { onClearAll(); onClose(); }}
+            style={{
+              fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.4)',
+              background: 'rgba(255,255,255,0.07)', border: '0.5px solid rgba(255,255,255,0.12)',
+              borderRadius: 6, padding: '3px 10px', cursor: 'pointer',
+              transition: 'background 0.15s, color 0.15s',
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(204,0,0,0.2)'; (e.currentTarget as HTMLElement).style.color = '#ff6b6b'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.07)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.4)'; }}
+          >
+            Clear all
+          </button>
+        )}
       </div>
 
       {notifications.length === 0 ? (
@@ -109,6 +128,7 @@ function NotifPanel({ notifications, onOpen, onDismiss, onClose }: {
                     {n.magnitude} · {n.vehicle.id}
                     {n.eventCount > 1 && <span style={{ color: accent, fontWeight: 600 }}> · {n.eventCount} incidents/30d</span>}
                   </div>
+                  <EnvironmentBadge environment={n.environment} compact />
                   <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginTop: 3 }}>
                     {timeAgo(n.timestamp)}
                     {n.analysis && <span style={{ color: accent, marginLeft: 6, fontWeight: 600 }}>{severity}</span>}
@@ -137,7 +157,7 @@ export default function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
   const {
-    notifications, dismissNotification, selectedNotification,
+    notifications, dismissNotification, clearAllNotifications, selectedNotification,
     openNotification, closeNotification,
     isMobile, redAlertCount,
   } = useFleet();
@@ -239,6 +259,7 @@ export default function AppShell() {
                   notifications={notifications}
                   onOpen={openNotification}
                   onDismiss={dismissNotification}
+                  onClearAll={clearAllNotifications}
                   onClose={() => setNotifOpen(false)}
                 />
               )}
@@ -270,6 +291,7 @@ export default function AppShell() {
       <SafetyToast
         notifications={notifications.filter(n => !toastDismissed.has(n.id))}
         onDismiss={id => setToastDismissed(prev => new Set([...prev, id]))}
+        onClearAll={() => setToastDismissed(new Set(notifications.map(n => n.id)))}
         onOpen={openNotification}
       />
       {selectedNotification && (

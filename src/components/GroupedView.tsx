@@ -24,6 +24,29 @@ interface Vehicle {
 type StatusType = 'Moving' | 'Idle' | 'Excessive Idle' | 'Stationary' | 'Parked' | 'Inactive' | 'Offline';
 type StatusFilter = 'All' | StatusType;
 
+const GROUP_ORDER = ['Alternative', 'Cement', 'Inbound', 'LH Customer Assets', 'LH Quarry', 'Ready Mix'];
+
+const GROUP_COLORS: Record<string, string> = {
+  'Alternative': '#0d9488',
+  'Cement':      '#0078D4',
+  'Inbound':     '#7C3AED',
+  'LH Customer Assets': '#d97706',
+  'LH Quarry':   '#16a34a',
+  'Ready Mix':   '#e11d48',
+  'Other':       '#6B7A8D',
+};
+
+function getGroup(zone: string): string {
+  const z = (zone || '').toUpperCase();
+  if (/QUARRY|LH QUARRY/.test(z))            return 'LH Quarry';
+  if (/INBOUND/.test(z))                      return 'Inbound';
+  if (/READY.?MIX|RDYMIX/.test(z))           return 'Ready Mix';
+  if (/CUSTOMER|DEPOT|AJAH|OREGUN/.test(z))  return 'LH Customer Assets';
+  if (/CEMENT|DD WEST|DD EAST/.test(z))       return 'Cement';
+  if (/ALTERNATIVE|ALT/.test(z))              return 'Alternative';
+  return 'Other';
+}
+
 interface Props {
   statusFilter: StatusFilter;
   authFetch: (url: string, options?: RequestInit) => Promise<Response>;
@@ -233,19 +256,86 @@ function ZoneSection({ siteName, vehicles, startOpen }: ZoneSectionProps) {
   );
 }
 
+interface GroupSectionProps {
+  groupName: string;
+  siteGroups: [string, Vehicle[]][];
+  startOpen: boolean;
+}
+
+function GroupSection({ groupName, siteGroups, startOpen }: GroupSectionProps) {
+  const [open, setOpen] = useState(startOpen);
+  const color = GROUP_COLORS[groupName] ?? GROUP_COLORS.Other;
+  const total = siteGroups.reduce((n, [, vs]) => n + vs.length, 0);
+  const allVehicles = siteGroups.flatMap(([, vs]) => vs);
+  const hasPanic = allVehicles.some(v => v.panic);
+
+  useEffect(() => { setOpen(startOpen); }, [startOpen]);
+
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+          padding: '11px 16px',
+          background: open ? `${color}14` : `${color}08`,
+          border: `1px solid ${color}30`,
+          borderRadius: open ? '10px 10px 0 0' : 10,
+          cursor: 'pointer', textAlign: 'left',
+          transition: 'all 0.15s',
+        }}
+      >
+        <div style={{ width: 4, height: 22, borderRadius: 2, background: color, flexShrink: 0 }} />
+        <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--cd-text)', fontFamily: 'var(--cd-font-display)', flex: 1 }}>
+          {groupName}
+        </span>
+        {hasPanic && (
+          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 999, background: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)', display: 'flex', alignItems: 'center', gap: 3 }}>
+            <AlertOctagon size={9} /> {allVehicles.filter(v => v.panic).length} panic
+          </span>
+        )}
+        <StatusChips vehicles={allVehicles} />
+        <span style={{ fontSize: 11, fontWeight: 600, color, marginLeft: 4, whiteSpace: 'nowrap' }}>
+          {total} vehicle{total !== 1 ? 's' : ''}
+        </span>
+        <div style={{ color: 'var(--cd-text-muted)', flexShrink: 0, marginLeft: 4 }}>
+          {open ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+        </div>
+      </button>
+
+      {open && (
+        <div style={{
+          border: `1px solid ${color}25`, borderTop: 'none',
+          borderRadius: '0 0 10px 10px', padding: '6px 8px 8px',
+          background: `${color}04`,
+        }}>
+          {siteGroups.map(([site, vs]) => (
+            <ZoneSection key={site} siteName={site} vehicles={vs} startOpen={false} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function GroupedView({ statusFilter, authFetch }: Props) {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [isStale, setIsStale] = useState(false);
   const [search, setSearch] = useState('');
-  const [zoneFilter, setZoneFilter] = useState<string>('All Locations');
+  const [selectedGroup, setSelectedGroup] = useState<string>('All');
   const [allOpen, setAllOpen] = useState(true);
 
-  // Derive unique zones from live data
-  const availableZones = useMemo(() => {
-    const zones = new Set<string>();
-    vehicles.forEach(v => { if (v.zone && v.zone !== 'Unknown Zone') zones.add(v.zone); });
-    return ['All Locations', ...Array.from(zones).sort()];
+  // Count vehicles per major group for tab badges
+  const groupCounts = useMemo(() => {
+    const counts: Record<string, number> = { All: vehicles.length };
+    GROUP_ORDER.forEach(g => { counts[g] = 0; });
+    vehicles.forEach(v => {
+      const g = getGroup(v.zone);
+      if (counts[g] !== undefined) counts[g]++;
+      else counts[g] = 1;
+    });
+    return counts;
   }, [vehicles]);
   const warningTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const lastSuccess = useRef<number>(Date.now());
@@ -295,12 +385,33 @@ export default function GroupedView({ statusFilter, authFetch }: Props) {
     return () => clearInterval(iv);
   }, []);
 
-  const groups = useMemo(() => {
+  const sortSites = (entries: [string, Vehicle[]][]): [string, Vehicle[]][] => {
+    entries.forEach(([, vs], i) => {
+      entries[i][1] = [...vs].sort((a, b) => {
+        if (a.panic !== b.panic) return a.panic ? -1 : 1;
+        const aw = a.warnings?.length ?? 0, bw = b.warnings?.length ?? 0;
+        if (aw !== bw) return bw - aw;
+        return STATUS_PRIORITY[b.status] - STATUS_PRIORITY[a.status];
+      });
+    });
+    return entries.sort(([, a], [, b]) => {
+      const ap = a.filter(v => v.panic).length, bp = b.filter(v => v.panic).length;
+      if (ap !== bp) return bp - ap;
+      const aw = a.filter(v => v.warnings?.length).length, bw = b.filter(v => v.warnings?.length).length;
+      if (aw !== bw) return bw - aw;
+      return b.length - a.length;
+    });
+  };
+
+  // When a specific group is selected: flat site list for that group
+  // When All: grouped by major group → site
+  const { flatGroups, treeGroups } = useMemo(() => {
     const q = search.toLowerCase().trim();
 
     const filtered = vehicles.filter(v => {
-      if (statusFilter !== 'All' && v.status !== statusFilter) return false;
-      if (zoneFilter !== 'All Locations' && v.zone !== zoneFilter) return false;
+      if (statusFilter !== 'All' && v.status !== statusFilter
+        && !(statusFilter === 'Inactive' && v.status === 'Offline')) return false;
+      if (selectedGroup !== 'All' && getGroup(v.zone) !== selectedGroup) return false;
       if (!q) return true;
       return (
         v.regNo.toLowerCase().includes(q) ||
@@ -310,34 +421,40 @@ export default function GroupedView({ statusFilter, authFetch }: Props) {
       );
     });
 
-    const map = new Map<string, Vehicle[]>();
+    // Flat: site → vehicles (used when a specific group is selected)
+    const siteMap = new Map<string, Vehicle[]>();
     filtered.forEach(v => {
       const key = v.site || 'Unknown';
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(v);
+      if (!siteMap.has(key)) siteMap.set(key, []);
+      siteMap.get(key)!.push(v);
+    });
+    const flat = sortSites([...siteMap.entries()]);
+
+    // Tree: major group → site → vehicles (used when All)
+    const tree = new Map<string, Map<string, Vehicle[]>>();
+    GROUP_ORDER.forEach(g => tree.set(g, new Map()));
+    tree.set('Other', new Map());
+    filtered.forEach(v => {
+      const g = getGroup(v.zone);
+      const gMap = tree.get(g) ?? tree.get('Other')!;
+      const site = v.site || 'Unknown';
+      if (!gMap.has(site)) gMap.set(site, []);
+      gMap.get(site)!.push(v);
     });
 
-    // Sort vehicles within each group: panic → warnings → status priority
-    map.forEach((vs, k) => map.set(k, [...vs].sort((a, b) => {
-      if (a.panic !== b.panic) return a.panic ? -1 : 1;
-      const aw = a.warnings?.length ?? 0, bw = b.warnings?.length ?? 0;
-      if (aw !== bw) return bw - aw;
-      return STATUS_PRIORITY[b.status] - STATUS_PRIORITY[a.status];
-    })));
-
-    // Sort groups: panic first → warnings → moving count → size
-    return [...map.entries()].sort(([, a], [, b]) => {
-      const ap = a.filter(v => v.panic).length, bp = b.filter(v => v.panic).length;
-      if (ap !== bp) return bp - ap;
-      const aw = a.filter(v => v.warnings?.length).length, bw = b.filter(v => v.warnings?.length).length;
-      if (aw !== bw) return bw - aw;
-      const am = a.filter(v => v.status === 'Moving').length, bm = b.filter(v => v.status === 'Moving').length;
-      if (am !== bm) return bm - am;
-      return b.length - a.length;
+    const treeArr: [string, [string, Vehicle[]][]][] = [];
+    [...GROUP_ORDER, 'Other'].forEach(g => {
+      const gMap = tree.get(g);
+      if (!gMap || gMap.size === 0) return;
+      treeArr.push([g, sortSites([...gMap.entries()])]);
     });
-  }, [vehicles, statusFilter, search, zoneFilter]);
 
-  const totalShown = groups.reduce((n, [, vs]) => n + vs.length, 0);
+    return { flatGroups: flat, treeGroups: treeArr };
+  }, [vehicles, statusFilter, search, selectedGroup]);
+
+  const totalShown = selectedGroup === 'All'
+    ? treeGroups.reduce((n, [, sites]) => n + sites.reduce((m, [, vs]) => m + vs.length, 0), 0)
+    : flatGroups.reduce((n, [, vs]) => n + vs.length, 0);
 
   if (loading) {
     return (
@@ -347,39 +464,57 @@ export default function GroupedView({ statusFilter, authFetch }: Props) {
     );
   }
 
+  const isEmpty = selectedGroup === 'All' ? treeGroups.length === 0 : flatGroups.length === 0;
+
   return (
     <div className="gv-scene">
       <div className="gv-wrap">
 
-        {/* Toolbar */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+        {/* Group tabs */}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
+          {['All', ...GROUP_ORDER].map(g => {
+            const active = selectedGroup === g;
+            const color = g === 'All' ? '#6B7A8D' : (GROUP_COLORS[g] ?? '#6B7A8D');
+            const count = groupCounts[g] ?? 0;
+            return (
+              <button
+                key={g}
+                onClick={() => setSelectedGroup(g)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 5,
+                  padding: '6px 12px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                  fontFamily: 'var(--cd-font-body)', fontSize: 12, fontWeight: active ? 700 : 500,
+                  background: active ? `${color}18` : 'var(--cd-surface-2)',
+                  color: active ? color : 'var(--cd-text-muted)',
+                  outline: active ? `1.5px solid ${color}40` : '1.5px solid transparent',
+                  transition: 'all 0.12s',
+                }}
+              >
+                {g}
+                <span style={{
+                  fontSize: 10, fontWeight: 700, padding: '1px 5px', borderRadius: 999,
+                  background: active ? `${color}22` : 'rgba(128,128,128,0.1)',
+                  color: active ? color : 'var(--cd-text-muted)',
+                }}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
 
-          {/* Search */}
+        {/* Search + controls bar */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <div style={{ position: 'relative', flex: '1', minWidth: '180px', maxWidth: '300px' }}>
             <Search size={13} style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', color: 'var(--cd-text-muted)', pointerEvents: 'none' }} />
             <input
               className="gv-search-input"
               type="text"
-              placeholder="Search reg, name…"
+              placeholder="Search reg, name, site…"
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
           </div>
-
-          {/* Zone dropdown — derived from live data */}
-          <div className="gv-select-wrap">
-            <select
-              className="gv-select"
-              value={zoneFilter}
-              onChange={e => setZoneFilter(e.target.value)}
-            >
-              {availableZones.map(z => (
-                <option key={z} value={z}>{z}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Right side */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
             {isStale && (
               <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: '#d97706', fontWeight: '500' }}>
@@ -387,7 +522,7 @@ export default function GroupedView({ statusFilter, authFetch }: Props) {
               </span>
             )}
             <span style={{ fontSize: '12px', color: 'var(--cd-text-muted)', whiteSpace: 'nowrap' }}>
-              {groups.length} groups · {totalShown} vehicles
+              {totalShown} vehicles
             </span>
             <button className="gv-btn-ghost" onClick={() => setAllOpen(o => !o)}>
               {allOpen ? 'Collapse all' : 'Expand all'}
@@ -395,18 +530,21 @@ export default function GroupedView({ statusFilter, authFetch }: Props) {
           </div>
         </div>
 
-        {/* Groups */}
-        {groups.length === 0 ? (
-          <div style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            padding: '60px 20px', color: 'var(--cd-text-muted)', gap: '12px',
-          }}>
+        {/* Vehicle list */}
+        {isEmpty ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 20px', color: 'var(--cd-text-muted)', gap: '12px' }}>
             <WifiOff size={28} style={{ opacity: 0.35 }} />
             <span style={{ fontSize: '14px' }}>No vehicles match the current filter</span>
           </div>
+        ) : selectedGroup === 'All' ? (
+          <div className="gv-zones-grid">
+            {treeGroups.map(([groupName, sites]) => (
+              <GroupSection key={groupName} groupName={groupName} siteGroups={sites} startOpen={allOpen} />
+            ))}
+          </div>
         ) : (
           <div className="gv-zones-grid">
-            {groups.map(([siteName, vs]) => (
+            {flatGroups.map(([siteName, vs]) => (
               <ZoneSection key={siteName} siteName={siteName} vehicles={vs} startOpen={allOpen} />
             ))}
           </div>

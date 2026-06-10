@@ -1,8 +1,12 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { pollOnce, startPolling, clearTriggeredEvent, resetState, getWarningEvents } from './scripts/mix-test.js'
+import { resolveEnvironment } from './scripts/environment-service.js'
+import * as dotenv from 'dotenv'
 import fs from 'fs'
 import path from 'path'
+
+dotenv.config()
 
 const ACKNOWLEDGED_FILE = path.join(process.cwd(), 'public', 'acknowledged.json')
 const API_SECRET = process.env.API_SECRET
@@ -12,9 +16,7 @@ function loadAcknowledged(): string[] {
     if (fs.existsSync(ACKNOWLEDGED_FILE)) {
       return JSON.parse(fs.readFileSync(ACKNOWLEDGED_FILE, 'utf8'))
     }
-  } catch {
-    // ignore
-  }
+  } catch { }
   return []
 }
 
@@ -46,38 +48,23 @@ export default defineConfig({
           pollingStarted = true
         }
 
-        // Refresh endpoint
+        // POST /api/refresh
         server.middlewares.use('/api/refresh', async (req, res) => {
-          if (!isAuthorized(req)) {
-            res.statusCode = 401
-            res.end('Unauthorized')
-            return
-          }
-          if (req.method !== 'POST') {
-            res.statusCode = 405
-            res.end('Method Not Allowed')
-            return
-          }
+          if (!isAuthorized(req)) { res.statusCode = 401; res.end('Unauthorized'); return }
+          if (req.method !== 'POST') { res.statusCode = 405; res.end('Method Not Allowed'); return }
           const result = await pollOnce()
           res.setHeader('Content-Type', 'application/json')
           res.end(JSON.stringify(result))
         })
 
-        // Get acknowledged IDs
+        // GET|POST /api/acknowledged
         server.middlewares.use('/api/acknowledged', async (req, res) => {
-          if (!isAuthorized(req)) {
-            res.statusCode = 401
-            res.end('Unauthorized')
-            return
-          }
-
+          if (!isAuthorized(req)) { res.statusCode = 401; res.end('Unauthorized'); return }
           if (req.method === 'GET') {
-            const ids = loadAcknowledged()
             res.setHeader('Content-Type', 'application/json')
-            res.end(JSON.stringify(ids))
+            res.end(JSON.stringify(loadAcknowledged()))
             return
           }
-
           if (req.method === 'POST') {
             let body = ''
             req.on('data', (chunk: Buffer) => { body += chunk.toString() })
@@ -85,159 +72,73 @@ export default defineConfig({
               try {
                 const { id } = JSON.parse(body)
                 const ids = loadAcknowledged()
-                if (!ids.includes(id)) {
-                  ids.push(id)
-                  saveAcknowledged(ids)
-                }
+                if (!ids.includes(id)) { ids.push(id); saveAcknowledged(ids) }
                 clearTriggeredEvent(id)
                 res.setHeader('Content-Type', 'application/json')
                 res.end(JSON.stringify({ ok: true }))
-              } catch {
-                res.statusCode = 400
-                res.end('Bad Request')
-              }
+              } catch { res.statusCode = 400; res.end('Bad Request') }
             })
             return
           }
-
-          res.statusCode = 405
-          res.end('Method Not Allowed')
+          res.statusCode = 405; res.end('Method Not Allowed')
         })
 
-        // Reset endpoint
+        // POST /api/reset
         server.middlewares.use('/api/reset', async (req, res) => {
-          if (!isAuthorized(req)) {
-            res.statusCode = 401
-            res.end('Unauthorized')
-            return
-          }
-          if (req.method !== 'POST') {
-            res.statusCode = 405
-            res.end('Method Not Allowed')
-            return
-          }
+          if (!isAuthorized(req)) { res.statusCode = 401; res.end('Unauthorized'); return }
+          if (req.method !== 'POST') { res.statusCode = 405; res.end('Method Not Allowed'); return }
           resetState()
           saveAcknowledged([])
           res.setHeader('Content-Type', 'application/json')
           res.end(JSON.stringify({ ok: true }))
         })
 
-        // Data endpoint
+        // GET /api/data
         server.middlewares.use('/api/data', async (req, res) => {
-          if (!isAuthorized(req)) {
-            res.statusCode = 401
-            res.end('Unauthorized')
-            return
-          }
-          if (req.method !== 'GET') {
-            res.statusCode = 405
-            res.end('Method Not Allowed')
-            return
-          }
+          if (!isAuthorized(req)) { res.statusCode = 401; res.end('Unauthorized'); return }
+          if (req.method !== 'GET') { res.statusCode = 405; res.end('Method Not Allowed'); return }
           try {
-            const dataPath = path.join(process.cwd(), 'public', 'data.json')
-            const data = fs.readFileSync(dataPath, 'utf8')
+            const data = fs.readFileSync(path.join(process.cwd(), 'public', 'data.json'), 'utf8')
             res.setHeader('Content-Type', 'application/json')
             res.end(data)
-          } catch {
-            res.statusCode = 404
-            res.end('Not Found')
-          }
+          } catch { res.statusCode = 404; res.end('Not Found') }
         })
 
-        // Metadata endpoint
+        // GET /api/metadata
         server.middlewares.use('/api/metadata', async (req, res) => {
-          if (!isAuthorized(req)) {
-            res.statusCode = 401
-            res.end('Unauthorized')
-            return
-          }
-          if (req.method !== 'GET') {
-            res.statusCode = 405
-            res.end('Method Not Allowed')
-            return
-          }
+          if (!isAuthorized(req)) { res.statusCode = 401; res.end('Unauthorized'); return }
+          if (req.method !== 'GET') { res.statusCode = 405; res.end('Method Not Allowed'); return }
           try {
-            const metadataPath = path.join(process.cwd(), 'public', 'metadata.json')
-            const data = fs.readFileSync(metadataPath, 'utf8')
+            const data = fs.readFileSync(path.join(process.cwd(), 'public', 'metadata.json'), 'utf8')
             res.setHeader('Content-Type', 'application/json')
             res.end(data)
-          } catch {
-            res.statusCode = 404
-            res.end('Not Found')
-          }
+          } catch { res.statusCode = 404; res.end('Not Found') }
         })
 
-        // Events log endpoint — reads from events.log and panic.log, enriches with vehicle data
-        server.middlewares.use('/api/events/log', async (req, res) => {
-          if (!isAuthorized(req)) {
-            res.statusCode = 401
-            res.end('Unauthorized')
-            return
-          }
-          if (req.method !== 'GET') {
-            res.statusCode = 405
-            res.end('Method Not Allowed')
-            return
-          }
-          try {
-            const entries: any[] = []
-
-            // Warning events endpoint
-        server.middlewares.use('/api/events', async (req, res) => {
-          if (!isAuthorized(req)) {
-            res.statusCode = 401
-            res.end('Unauthorized')
-            return
-          }
-          if (req.method !== 'GET') {
-            res.statusCode = 405
-            res.end('Method Not Allowed')
-            return
-          }
+        // GET /api/events — in-memory warning events
+        server.middlewares.use('/api/events', (req, res, next) => {
+          if ((req.url || '').startsWith('/log')) { next(); return }
+          if (!isAuthorized(req)) { res.statusCode = 401; res.end('Unauthorized'); return }
+          if (req.method !== 'GET') { res.statusCode = 405; res.end('Method Not Allowed'); return }
           res.setHeader('Content-Type', 'application/json')
           res.end(JSON.stringify(getWarningEvents()))
         })
 
-        // Drivers endpoint
-          server.middlewares.use('/api/drivers', async (req, res) => {
-            if (!isAuthorized(req)) {
-              res.statusCode = 401
-              res.end('Unauthorized')
-              return
-            }
-            if (req.method !== 'GET') {
-              res.statusCode = 405
-              res.end('Method Not Allowed')
-              return
-            }
-            try {
-              const driversPath = path.join(process.cwd(), 'public', 'drivers.json')
-              if (!fs.existsSync(driversPath)) {
-                res.setHeader('Content-Type', 'application/json')
-                res.end(JSON.stringify([]))
-                return
-              }
-              const data = fs.readFileSync(driversPath, 'utf8')
-              res.setHeader('Content-Type', 'application/json')
-              res.end(data)
-            } catch {
-              res.statusCode = 404
-              res.end('Not Found')
-            }
-          })
-
-            // Load vehicle lookup from data.json for enrichment
+        // GET /api/events/log — reads from events.log + panic.log
+        server.middlewares.use('/api/events/log', async (req, res) => {
+          if (!isAuthorized(req)) { res.statusCode = 401; res.end('Unauthorized'); return }
+          if (req.method !== 'GET') { res.statusCode = 405; res.end('Method Not Allowed'); return }
+          try {
             const vehicleLookup = new Map<string, any>()
             try {
               const dataPath = path.join(process.cwd(), 'public', 'data.json')
               if (fs.existsSync(dataPath)) {
-                const vehicles = JSON.parse(fs.readFileSync(dataPath, 'utf8'))
-                vehicles.forEach((v: any) => {
+                JSON.parse(fs.readFileSync(dataPath, 'utf8')).forEach((v: any) => {
                   vehicleLookup.set(v.id?.toString(), {
                     regNo: v.regNo || 'N/A',
                     assetName: v.assetName || 'Unknown Vehicle',
                     transporter: v.transporter || 'N/A',
+                    position: v.position,
                   })
                 })
               }
@@ -245,44 +146,130 @@ export default defineConfig({
 
             const enrich = (entry: any) => {
               const vehicle = vehicleLookup.get(entry.assetId?.toString()) || {}
-              return {
+              const enriched = {
                 ...entry,
                 regNo: vehicle.regNo || 'N/A',
                 assetName: vehicle.assetName || 'Unknown Vehicle',
                 transporter: vehicle.transporter || 'N/A',
               }
+              if ((enriched.latitude == null || enriched.longitude == null) && vehicle.position) {
+                enriched.latitude = vehicle.position.latitude
+                enriched.longitude = vehicle.position.longitude
+              }
+              return enriched
             }
 
+            const entries: any[] = []
             const panicLogPath = path.join(process.cwd(), 'panic.log')
             if (fs.existsSync(panicLogPath)) {
-              const lines = fs.readFileSync(panicLogPath, 'utf8').trim().split('\n').filter(Boolean)
-              lines.forEach(line => {
-                try {
-                  const entry = JSON.parse(line)
-                  entries.push(enrich({ ...entry, type: 'panic', label: 'Panic' }))
-                } catch { }
+              fs.readFileSync(panicLogPath, 'utf8').trim().split('\n').filter(Boolean).forEach(line => {
+                try { entries.push(enrich({ ...JSON.parse(line), type: 'panic', label: 'Panic' })) } catch { }
               })
             }
-
             const eventsLogPath = path.join(process.cwd(), 'events.log')
             if (fs.existsSync(eventsLogPath)) {
-              const lines = fs.readFileSync(eventsLogPath, 'utf8').trim().split('\n').filter(Boolean)
-              lines.forEach(line => {
-                try {
-                  const entry = JSON.parse(line)
-                  entries.push(enrich({ ...entry, type: 'warning' }))
-                } catch { }
+              fs.readFileSync(eventsLogPath, 'utf8').trim().split('\n').filter(Boolean).forEach(line => {
+                try { entries.push(enrich({ ...JSON.parse(line), type: 'warning' })) } catch { }
               })
             }
-
             entries.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-
             res.setHeader('Content-Type', 'application/json')
             res.end(JSON.stringify(entries))
+          } catch { res.statusCode = 500; res.end('Internal Server Error') }
+        })
+
+        // GET /api/fuel/history?period=day|week|month
+        server.middlewares.use('/api/fuel/history', async (req, res) => {
+          if (!isAuthorized(req)) { res.statusCode = 401; res.end('Unauthorized'); return }
+          if (req.method !== 'GET') { res.statusCode = 405; res.end('Method Not Allowed'); return }
+          try {
+            const qs = (req.originalUrl || req.url || '').split('?')[1] || ''
+            const period = new URLSearchParams(qs).get('period') || 'day'
+            const cutoffs: Record<string, number> = { day: 86400000, week: 604800000, month: 2592000000 }
+            const cutoff = Date.now() - (cutoffs[period] || cutoffs.day)
+
+            const historyPath = path.join(process.cwd(), 'fuel-history.log')
+            if (!fs.existsSync(historyPath)) {
+              res.setHeader('Content-Type', 'application/json'); res.end('[]'); return
+            }
+
+            const seriesMap = new Map<string, { time: string; level: number }[]>()
+            fs.readFileSync(historyPath, 'utf8').trim().split('\n').filter(Boolean).forEach(line => {
+              try {
+                const entry = JSON.parse(line)
+                if (new Date(entry.timestamp).getTime() < cutoff) return
+                if (!seriesMap.has(entry.assetId)) seriesMap.set(entry.assetId, [])
+                seriesMap.get(entry.assetId)!.push({ time: entry.timestamp, level: Math.max(0, entry.level) })
+              } catch { }
+            })
+
+            const vehicleLookup = new Map<string, any>()
+            try {
+              const dataPath = path.join(process.cwd(), 'public', 'data.json')
+              if (fs.existsSync(dataPath)) {
+                JSON.parse(fs.readFileSync(dataPath, 'utf8')).forEach((v: any) => {
+                  vehicleLookup.set(v.id?.toString(), { regNo: v.regNo, assetName: v.assetName, zone: v.zone })
+                })
+              }
+            } catch { }
+
+            const result: any[] = []
+            seriesMap.forEach((data, assetId) => {
+              const info = vehicleLookup.get(assetId) || {}
+              result.push({ assetId, regNo: info.regNo || assetId, assetName: info.assetName || '', zone: info.zone || '', data })
+            })
+
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify(result))
+          } catch { res.statusCode = 500; res.end('Internal Server Error') }
+        })
+
+        // GET /api/environment — weather + traffic at incident coordinates
+        server.middlewares.use('/api/environment', async (req, res) => {
+          if (!isAuthorized(req)) { res.statusCode = 401; res.end('Unauthorized'); return }
+          if (req.method !== 'GET') { res.statusCode = 405; res.end('Method Not Allowed'); return }
+          try {
+            const qs = (req.originalUrl || req.url || '').split('?')[1] || ''
+            const params = new URLSearchParams(qs)
+            const lat = parseFloat(params.get('lat') || '')
+            const lng = parseFloat(params.get('lng') || '')
+            const hasCoords = !isNaN(lat) && !isNaN(lng)
+            const address = params.get('address') || ''
+            if (!hasCoords && !address) {
+              res.statusCode = 400
+              res.setHeader('Content-Type', 'application/json')
+              res.end(JSON.stringify({ error: 'lat/lng or address required' }))
+              return
+            }
+            const googleApiKey = process.env.GOOGLE_MAPS_API_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY
+            const tomTomApiKey = process.env.TOMTOM_API_KEY || process.env.VITE_TOMTOM_API_KEY
+            const environment = await resolveEnvironment({
+              lat: hasCoords ? lat : null,
+              lng: hasCoords ? lng : null,
+              address,
+              timestamp: params.get('timestamp') || new Date().toISOString(),
+              googleApiKey,
+              tomTomApiKey,
+            })
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify(environment))
           } catch {
             res.statusCode = 500
-            res.end('Internal Server Error')
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ error: 'Environment lookup failed' }))
           }
+        })
+
+        // GET /api/drivers
+        server.middlewares.use('/api/drivers', async (req, res) => {
+          if (!isAuthorized(req)) { res.statusCode = 401; res.end('Unauthorized'); return }
+          if (req.method !== 'GET') { res.statusCode = 405; res.end('Method Not Allowed'); return }
+          try {
+            const driversPath = path.join(process.cwd(), 'public', 'drivers.json')
+            if (!fs.existsSync(driversPath)) { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify([])); return }
+            res.setHeader('Content-Type', 'application/json')
+            res.end(fs.readFileSync(driversPath, 'utf8'))
+          } catch { res.statusCode = 404; res.end('Not Found') }
         })
       },
     },

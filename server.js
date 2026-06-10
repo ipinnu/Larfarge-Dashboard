@@ -2,7 +2,11 @@ import express from 'express'
 import path from 'path'
 import fs from 'fs'
 import { fileURLToPath } from 'url'
+import * as dotenv from 'dotenv'
 import { startPolling, pollOnce, clearTriggeredEvent, resetState, getWarningEvents } from './scripts/mix-test.js'
+import { resolveEnvironment } from './scripts/environment-service.js'
+
+dotenv.config()
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -142,6 +146,7 @@ app.get('/api/events/log', (req, res) => {
             regNo: v.regNo || 'N/A',
             assetName: v.assetName || 'Unknown Vehicle',
             transporter: v.transporter || 'N/A',
+            position: v.position,
           })
         })
       }
@@ -149,12 +154,17 @@ app.get('/api/events/log', (req, res) => {
 
     const enrich = (entry) => {
       const vehicle = vehicleLookup.get(entry.assetId?.toString()) || {}
-      return {
+      const enriched = {
         ...entry,
         regNo: vehicle.regNo || 'N/A',
         assetName: vehicle.assetName || 'Unknown Vehicle',
         transporter: vehicle.transporter || 'N/A',
       }
+      if ((enriched.latitude == null || enriched.longitude == null) && vehicle.position) {
+        enriched.latitude = vehicle.position.latitude
+        enriched.longitude = vehicle.position.longitude
+      }
+      return enriched
     }
 
     const panicLogPath = path.join(process.cwd(), 'panic.log')
@@ -179,6 +189,79 @@ app.get('/api/events/log', (req, res) => {
 
     entries.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
     res.json(entries)
+  } catch {
+    res.status(500).end('Internal Server Error')
+  }
+})
+
+// Environment context — weather + traffic at incident coordinates
+app.get('/api/environment', async (req, res) => {
+  if (!isAuthorized(req)) return unauthorized(res)
+  try {
+    const lat = parseFloat(req.query.lat)
+    const lng = parseFloat(req.query.lng)
+    const hasCoords = !isNaN(lat) && !isNaN(lng)
+    if (!hasCoords && !req.query.address) return res.status(400).json({ error: 'lat/lng or address required' })
+
+    const googleApiKey = process.env.GOOGLE_MAPS_API_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY
+    const tomTomApiKey = process.env.TOMTOM_API_KEY || process.env.VITE_TOMTOM_API_KEY
+    const environment = await resolveEnvironment({
+      lat: hasCoords ? lat : null,
+      lng: hasCoords ? lng : null,
+      address: req.query.address || '',
+      timestamp: req.query.timestamp || new Date().toISOString(),
+      googleApiKey,
+      tomTomApiKey,
+    })
+    res.json(environment)
+  } catch {
+    res.status(500).json({ error: 'Environment lookup failed' })
+  }
+})
+
+// Fuel history — returns time-series per vehicle for day/week/month
+app.get('/api/fuel/history', (req, res) => {
+  if (!isAuthorized(req)) return unauthorized(res)
+  try {
+    const period = req.query.period || 'day'
+    const now = Date.now()
+    const cutoffs = { day: 24 * 60 * 60 * 1000, week: 7 * 24 * 60 * 60 * 1000, month: 30 * 24 * 60 * 60 * 1000 }
+    const cutoff = now - (cutoffs[period] || cutoffs.day)
+
+    const historyPath = path.join(process.cwd(), 'fuel-history.log')
+    if (!fs.existsSync(historyPath)) return res.json([])
+
+    const lines = fs.readFileSync(historyPath, 'utf8').trim().split('\n').filter(Boolean)
+
+    // Build per-vehicle series, filtered to period
+    const seriesMap = new Map()
+    lines.forEach(line => {
+      try {
+        const entry = JSON.parse(line)
+        if (new Date(entry.timestamp).getTime() < cutoff) return
+        if (!seriesMap.has(entry.assetId)) seriesMap.set(entry.assetId, [])
+        seriesMap.get(entry.assetId).push({ time: entry.timestamp, level: entry.level })
+      } catch { }
+    })
+
+    // Enrich with regNo from data.json
+    const vehicleLookup = new Map()
+    try {
+      const dataPath = path.join(process.cwd(), 'public', 'data.json')
+      if (fs.existsSync(dataPath)) {
+        JSON.parse(fs.readFileSync(dataPath, 'utf8')).forEach(v => {
+          vehicleLookup.set(v.id?.toString(), { regNo: v.regNo, assetName: v.assetName, zone: v.zone })
+        })
+      }
+    } catch { }
+
+    const result = []
+    seriesMap.forEach((data, assetId) => {
+      const info = vehicleLookup.get(assetId) || {}
+      result.push({ assetId, regNo: info.regNo || assetId, assetName: info.assetName || '', zone: info.zone || '', data })
+    })
+
+    res.json(result)
   } catch {
     res.status(500).end('Internal Server Error')
   }

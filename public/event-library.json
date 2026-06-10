@@ -1,0 +1,3642 @@
+[
+  {
+    "EventTypeId": "-4339002058474729538",
+    "EventType": "Custom",
+    "Description": ".Alarm - Panic Pressed (MV)"
+  },
+  {
+    "EventTypeId": "3403025020097063732",
+    "EventType": "Custom",
+    "Description": ".Driving @11am (MV)"
+  },
+  {
+    "EventTypeId": "-3854690043912316778",
+    "EventType": "Custom",
+    "Description": ".Driving @8pm (MV)"
+  },
+  {
+    "EventTypeId": "-1458907007607100125",
+    "ValueName": "Deceleration",
+    "FormatType": "Acceleration",
+    "DisplayUnits": "km/h/s",
+    "EventType": "Custom",
+    "Description": ".Harsh Braking > 10km/h/s (MV)(LDV)"
+  },
+  {
+    "EventTypeId": "2932904757484615550",
+    "ValueName": "Deceleration",
+    "FormatType": "Acceleration",
+    "DisplayUnits": "km/h/s",
+    "EventType": "Custom",
+    "Description": ".Harsh Braking > 8km/h/s (MV)(Trucks)"
+  },
+  {
+    "EventTypeId": "-1011312944961635044",
+    "ValueName": "3-Axis Impact Severity",
+    "FormatType": "Value",
+    "DisplayUnits": "",
+    "EventType": "Custom",
+    "Description": ".Impact Detected >13 (MV)"
+  },
+  {
+    "EventTypeId": "2881699321614343295",
+    "ValueName": "Time in mode",
+    "FormatType": "Seconds",
+    "DisplayUnits": "seconds",
+    "EventType": "Custom",
+    "Description": "@LocationMFA"
+  },
+  {
+    "EventTypeId": "-725425911441300748",
+    "ValueName": "Time Since Ignition On",
+    "FormatType": "Seconds",
+    "DisplayUnits": "seconds",
+    "EventType": "Custom",
+    "Description": "1HR IDLING"
+  },
+  {
+    "EventTypeId": "-8326277878400790438",
+    "EventType": "Custom",
+    "Description": "3 Axis Accident Potential Rollover"
+  },
+  {
+    "EventTypeId": "1287673621658407204",
+    "EventType": "Custom",
+    "Description": "3 Axis Cornering G Force - High sens HGV"
+  },
+  {
+    "EventTypeId": "-9057909335841608240",
+    "ValueName": "Current time",
+    "FormatType": "Time",
+    "EventType": "Custom",
+    "Description": "7PM NIGHT DRIVING"
+  },
+  {
+    "EventTypeId": "7565419458120128931",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Custom",
+    "Description": "AI Video @ 40km/hr"
+  },
+  {
+    "EventTypeId": "5263767237490820339",
+    "EventType": "Custom",
+    "Description": "Alarm-MiX Vision InCab Camera Tamper Detected(MV)"
+  },
+  {
+    "EventTypeId": "-1000824428940959682",
+    "EventType": "Custom",
+    "Description": "ASSET EMERGENCY RECOVERY EVENT"
+  },
+  {
+    "EventTypeId": "2425320867625888993",
+    "ValueName": "Mechanical  Load Axle Sensor",
+    "FormatType": "Value",
+    "DisplayUnits": "°",
+    "EventType": "Custom",
+    "Description": "Axle load at 10Ton"
+  },
+  {
+    "EventTypeId": "5230229504303120391",
+    "ValueName": "Internal Battery backup voltage",
+    "FormatType": "Value",
+    "DisplayUnits": "V",
+    "EventType": "Custom",
+    "Description": "Backup Battery Status"
+  },
+  {
+    "EventTypeId": "1199938335591930905",
+    "ValueName": "Battery voltage",
+    "FormatType": "Value",
+    "DisplayUnits": "mV",
+    "EventType": "Custom",
+    "Description": "Battery Voltage - Connection Diagnostic"
+  },
+  {
+    "EventTypeId": "-403297321889997158",
+    "ValueName": "Battery voltage",
+    "FormatType": "Value",
+    "DisplayUnits": "mV",
+    "EventType": "Custom",
+    "Description": "Bulk Tanker Discharge"
+  },
+  {
+    "EventTypeId": "4129366526893334339",
+    "ValueName": "Trip distance",
+    "FormatType": "DistanceKilometers",
+    "DisplayUnits": "km",
+    "EventType": "Custom",
+    "Description": "DELAY - TSL (2HRS)"
+  },
+  {
+    "EventTypeId": "5450266231370542802",
+    "ValueName": "Organisation and driver from plug",
+    "FormatType": "CombinedCompanyDriverId",
+    "EventType": "Custom",
+    "Description": "DELAY 4HRS"
+  },
+  {
+    "EventTypeId": "-8905524074060966718",
+    "ValueName": "Organisation and driver from plug",
+    "FormatType": "CombinedCompanyDriverId",
+    "EventType": "Custom",
+    "Description": "DELAY 6HRS"
+  },
+  {
+    "EventTypeId": "-5898144859070188447",
+    "ValueName": "Trip distance",
+    "FormatType": "DistanceKilometers",
+    "DisplayUnits": "km",
+    "EventType": "Custom",
+    "Description": "DI: Driving without Blue Driver Key"
+  },
+  {
+    "EventTypeId": "-1506906445878820863",
+    "ValueName": "GPS age of reading",
+    "FormatType": "Seconds",
+    "DisplayUnits": "seconds",
+    "EventType": "Custom",
+    "Description": "DI: Fault GPS (remove)"
+  },
+  {
+    "EventTypeId": "-8610004282942706127",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Custom",
+    "Description": "DI: RS Exception"
+  },
+  {
+    "EventTypeId": "-5130179436473372832",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Custom",
+    "Description": "Diagnostic - Can drop"
+  },
+  {
+    "EventTypeId": "4018561238903337529",
+    "ValueName": "Acceleration",
+    "FormatType": "Acceleration",
+    "DisplayUnits": "km/h/s",
+    "EventType": "Custom",
+    "Description": "Diagnostic - HA>20mph/s"
+  },
+  {
+    "EventTypeId": "-9032903527543233808",
+    "ValueName": "Deceleration",
+    "FormatType": "Acceleration",
+    "DisplayUnits": "km/h/s",
+    "EventType": "Custom",
+    "Description": "Diagnostic - HB>20mph/s"
+  },
+  {
+    "EventTypeId": "8303470561883150849",
+    "ValueName": "Engine RPM",
+    "FormatType": "Value",
+    "DisplayUnits": "RPM",
+    "EventType": "Custom",
+    "Description": "Diagnostic - OR>7000RPM"
+  },
+  {
+    "EventTypeId": "-4886934616659694596",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Custom",
+    "Description": "Diagnostic - OS>193Km/h"
+  },
+  {
+    "EventTypeId": "5708937598737273231",
+    "ValueName": "Engine RPM",
+    "FormatType": "Value",
+    "DisplayUnits": "RPM",
+    "EventType": "Custom",
+    "Description": "Diagnostic - RPM Signal (Not Hybrids)"
+  },
+  {
+    "EventTypeId": "8288028341290182992",
+    "ValueName": "GPS velocity",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Custom",
+    "Description": "Diagnostic Speed vs GPS Velocity"
+  },
+  {
+    "EventTypeId": "-4081555580720811976",
+    "ValueName": "DVR Error Status",
+    "FormatType": "Value",
+    "EventType": "Custom",
+    "Description": "Diagnostic: MiX Vision - Critical Error"
+  },
+  {
+    "EventTypeId": "2704682951233877221",
+    "EventType": "Custom",
+    "Description": "Diagnostic: MiX Vision - MVR Device Error"
+  },
+  {
+    "EventTypeId": "4666699473396591808",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Custom",
+    "Description": "Driving within 5 km/h of Speed Limit for > 30 mins"
+  },
+  {
+    "EventTypeId": "-1181703586347634386",
+    "ValueName": "Battery voltage",
+    "FormatType": "Value",
+    "DisplayUnits": "mV",
+    "EventType": "Custom",
+    "Description": "Drum Discharge"
+  },
+  {
+    "EventTypeId": "138742903647280231",
+    "ValueName": "Battery voltage",
+    "FormatType": "Value",
+    "DisplayUnits": "mV",
+    "EventType": "Custom",
+    "Description": "Drum Rolling"
+  },
+  {
+    "EventTypeId": "-840801421366630414",
+    "ValueName": "Time in mode",
+    "FormatType": "Seconds",
+    "DisplayUnits": "seconds",
+    "EventType": "Custom",
+    "Description": "Duration at location"
+  },
+  {
+    "EventTypeId": "-2515304994102021994",
+    "ValueName": "Payload",
+    "FormatType": "Value",
+    "DisplayUnits": "Tonnes",
+    "EventType": "Custom",
+    "Description": "Empty Truck"
+  },
+  {
+    "EventTypeId": "3598509194708519680",
+    "ValueName": "Payload",
+    "FormatType": "Value",
+    "DisplayUnits": "Tonnes",
+    "EventType": "Custom",
+    "Description": "Empty Truck Info Hub"
+  },
+  {
+    "EventTypeId": "-5474294081318782990",
+    "ValueName": "Payload",
+    "FormatType": "Value",
+    "DisplayUnits": "Tonnes",
+    "EventType": "Custom",
+    "Description": "End Trip - Payload Tick"
+  },
+  {
+    "EventTypeId": "4288136720789235230",
+    "ValueName": "Fuel Probe escort",
+    "FormatType": "Value",
+    "DisplayUnits": "l",
+    "EventType": "Custom",
+    "Description": "End Trip Fuel Level"
+  },
+  {
+    "EventTypeId": "-1651664568698074374",
+    "ValueName": "fuel level ltr",
+    "FormatType": "Value",
+    "DisplayUnits": "L",
+    "EventType": "Custom",
+    "Description": "End Trip Fuel Level - Escort Fuel Probe"
+  },
+  {
+    "EventTypeId": "8813556160665470800",
+    "ValueName": "Payload",
+    "FormatType": "Value",
+    "DisplayUnits": "Tonnes",
+    "EventType": "Custom",
+    "Description": "End trip load sensor - Payload"
+  },
+  {
+    "EventTypeId": "2604807224044360924",
+    "ValueName": "Time in mode",
+    "FormatType": "Seconds",
+    "DisplayUnits": "seconds",
+    "EventType": "Custom",
+    "Description": "ENGINE ON - MIXER NOT ROLLING"
+  },
+  {
+    "EventTypeId": "-6087179341020877126",
+    "EventType": "Custom",
+    "Description": "Entered NoGoZone - [Zone Name]"
+  },
+  {
+    "EventTypeId": "-251915166067105371",
+    "ValueName": "Fuel Probe escort",
+    "FormatType": "Value",
+    "DisplayUnits": "l",
+    "EventType": "Custom",
+    "Description": "Escort Probe 30secs ticker"
+  },
+  {
+    "EventTypeId": "8241368541153658513",
+    "ValueName": "Fuel Probe escort",
+    "FormatType": "Value",
+    "DisplayUnits": "l",
+    "EventType": "Custom",
+    "Description": "EscortFuel Level"
+  },
+  {
+    "EventTypeId": "-2444909906321912305",
+    "ValueName": "Current date/time",
+    "FormatType": "DateTime",
+    "EventType": "Custom",
+    "Description": "EWEK SCALE OUT ALERT"
+  },
+  {
+    "EventTypeId": "-1324221876134567589",
+    "ValueName": "Time in mode",
+    "FormatType": "Seconds",
+    "DisplayUnits": "seconds",
+    "EventType": "Custom",
+    "Description": "Excavator Idling >2mins"
+  },
+  {
+    "EventTypeId": "886258321853369586",
+    "ValueName": "Time in mode",
+    "FormatType": "Seconds",
+    "DisplayUnits": "seconds",
+    "EventType": "Custom",
+    "Description": "Excavator Idling More Than 10mins"
+  },
+  {
+    "EventTypeId": "6125287488212004429",
+    "ValueName": "Time in mode",
+    "FormatType": "Seconds",
+    "DisplayUnits": "seconds",
+    "EventType": "Custom",
+    "Description": "Excavator Idling Over 5mins"
+  },
+  {
+    "EventTypeId": "6679704703158550958",
+    "ValueName": "Time in mode",
+    "FormatType": "Seconds",
+    "DisplayUnits": "seconds",
+    "EventType": "Custom",
+    "Description": "Excavator Operation"
+  },
+  {
+    "EventTypeId": "2774584648467793425",
+    "EventType": "Custom",
+    "Description": "Exceeding  4 Hours Driving With Out 30 mins Rest"
+  },
+  {
+    "EventTypeId": "-2614250300200192131",
+    "EventType": "Custom",
+    "Description": "Excessive Idling LH"
+  },
+  {
+    "EventTypeId": "-2015600552416435772",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Custom",
+    "Description": "Free Wheeling"
+  },
+  {
+    "EventTypeId": "-2323085563581808665",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Custom",
+    "Description": "FREE WHEELING TSL EVENT"
+  },
+  {
+    "EventTypeId": "-3476668554601937704",
+    "ValueName": "Fuel Probe escort",
+    "FormatType": "Value",
+    "DisplayUnits": "l",
+    "EventType": "Custom",
+    "Description": "Fuel Probe"
+  },
+  {
+    "EventTypeId": "-6061736210584957932",
+    "ValueName": "fuel level ltr",
+    "FormatType": "Value",
+    "DisplayUnits": "L",
+    "EventType": "Custom",
+    "Description": "Fuel Probe 1min Ticker"
+  },
+  {
+    "EventTypeId": "7835540334200528539",
+    "ValueName": "fuel level ltr",
+    "FormatType": "Value",
+    "DisplayUnits": "L",
+    "EventType": "Custom",
+    "Description": "Fuel Probe 5min Ticker"
+  },
+  {
+    "EventTypeId": "-1080824990791144802",
+    "ValueName": "Time in mode",
+    "FormatType": "Seconds",
+    "DisplayUnits": "seconds",
+    "EventType": "Custom",
+    "Description": "GPRS Seesion Not Active"
+  },
+  {
+    "EventTypeId": "2294658371172377916",
+    "ValueName": "GPS number of satellites",
+    "FormatType": "Value",
+    "EventType": "Custom",
+    "Description": "GPS AND HDOP DIAGNOSIS"
+  },
+  {
+    "EventTypeId": "3462035948336404264",
+    "EventType": "Custom",
+    "Description": "GPS Jamming Detected"
+  },
+  {
+    "EventTypeId": "-621323210119093151",
+    "ValueName": "GPS age of reading",
+    "FormatType": "Seconds",
+    "DisplayUnits": "seconds",
+    "EventType": "Custom",
+    "Description": "GPS Signal Monitoring"
+  },
+  {
+    "EventTypeId": "-5960051299458720335",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Custom",
+    "Description": "GPS Tamper detect"
+  },
+  {
+    "EventTypeId": "4363411286788244994",
+    "EventType": "Custom",
+    "Description": "GSM Antenna Disconnection from IVMS Unit"
+  },
+  {
+    "EventTypeId": "3628417469006158456",
+    "EventType": "Custom",
+    "Description": "GSM Jamming Detected"
+  },
+  {
+    "EventTypeId": "-325665309870542785",
+    "ValueName": "Acceleration",
+    "FormatType": "Acceleration",
+    "DisplayUnits": "km/h/s",
+    "EventType": "Custom",
+    "Description": "Harsh Accelerating Excessively"
+  },
+  {
+    "EventTypeId": "3489486360304042804",
+    "ValueName": "Deceleration",
+    "FormatType": "Acceleration",
+    "DisplayUnits": "km/h/s",
+    "EventType": "Custom",
+    "Description": "Harsh Braking Excessively"
+  },
+  {
+    "EventTypeId": "7798873017151527730",
+    "ValueName": "GPS number of satellites",
+    "FormatType": "Value",
+    "EventType": "Custom",
+    "Description": "ID"
+  },
+  {
+    "EventTypeId": "4635149202808056865",
+    "ValueName": "GPS number of satellites",
+    "FormatType": "Value",
+    "EventType": "Custom",
+    "Description": "ID1"
+  },
+  {
+    "EventTypeId": "3203053052269994350",
+    "ValueName": "Time in mode",
+    "FormatType": "Seconds",
+    "DisplayUnits": "seconds",
+    "EventType": "Custom",
+    "Description": "Idling @ Odukpani - ITU Road"
+  },
+  {
+    "EventTypeId": "-2966633608042960380",
+    "ValueName": "Time in mode",
+    "FormatType": "Seconds",
+    "DisplayUnits": "seconds",
+    "EventType": "Custom",
+    "Description": "Idling@unknown Location above 1hour"
+  },
+  {
+    "EventTypeId": "656329837538139175",
+    "EventType": "Custom",
+    "Description": "Idling@unknown Location above 2hours"
+  },
+  {
+    "EventTypeId": "-3960332241047453548",
+    "ValueName": "Time in mode",
+    "FormatType": "Seconds",
+    "DisplayUnits": "seconds",
+    "EventType": "Custom",
+    "Description": "Idling@unknown Location above 30mins"
+  },
+  {
+    "EventTypeId": "-2495171419396157880",
+    "ValueName": "Ignition Voltage",
+    "FormatType": "Value",
+    "DisplayUnits": "mV",
+    "EventType": "Custom",
+    "Description": "IGNITION ON"
+  },
+  {
+    "EventTypeId": "1962409864315696467",
+    "ValueName": "Pressure sensor GNOM DDE",
+    "FormatType": "Value",
+    "DisplayUnits": "MPa",
+    "EventType": "Custom",
+    "Description": "Load  Detected"
+  },
+  {
+    "EventTypeId": "-8473465096680378070",
+    "ValueName": "Payload",
+    "FormatType": "Value",
+    "DisplayUnits": "Tonnes",
+    "EventType": "Custom",
+    "Description": "Loaded Truck"
+  },
+  {
+    "EventTypeId": "-4116853381023733501",
+    "EventType": "Custom",
+    "Description": "Loaded Truck and Ignition OFF"
+  },
+  {
+    "EventTypeId": "928362777931537630",
+    "ValueName": "Payload",
+    "FormatType": "Value",
+    "DisplayUnits": "Tonnes",
+    "EventType": "Custom",
+    "Description": "Loaded Truck and Moving"
+  },
+  {
+    "EventTypeId": "2217713211525682971",
+    "ValueName": "Payload",
+    "FormatType": "Value",
+    "DisplayUnits": "Tonnes",
+    "EventType": "Custom",
+    "Description": "Loaded Truck and Standing more than 5 min"
+  },
+  {
+    "EventTypeId": "-5834537248419541276",
+    "ValueName": "Payload",
+    "FormatType": "Value",
+    "DisplayUnits": "Tonnes",
+    "EventType": "Custom",
+    "Description": "Loaded truck Info Hub"
+  },
+  {
+    "EventTypeId": "7201408417504195060",
+    "ValueName": "fuel level ltr",
+    "FormatType": "Value",
+    "DisplayUnits": "L",
+    "EventType": "Custom",
+    "Description": "Low Fuel In Tank (40%) TSL"
+  },
+  {
+    "EventTypeId": "-217495912208162919",
+    "ValueName": "Battery voltage",
+    "FormatType": "Value",
+    "DisplayUnits": "mV",
+    "EventType": "Custom",
+    "Description": "Main Power Removed"
+  },
+  {
+    "EventTypeId": "6595827211563911589",
+    "ValueName": "Current date/time",
+    "FormatType": "DateTime",
+    "EventType": "Custom",
+    "Description": "MFA ENTRY"
+  },
+  {
+    "EventTypeId": "6058995154010500827",
+    "ValueName": "Time in mode",
+    "FormatType": "Seconds",
+    "DisplayUnits": "seconds",
+    "EventType": "Custom",
+    "Description": "MIXER DRUM DISCHARGE"
+  },
+  {
+    "EventTypeId": "4154824565431282517",
+    "ValueName": "Time in mode",
+    "FormatType": "Seconds",
+    "DisplayUnits": "seconds",
+    "EventType": "Custom",
+    "Description": "MIXER DRUM ROLLING"
+  },
+  {
+    "EventTypeId": "-6258524201965201035",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Custom",
+    "Description": "NEW EVACUATION ROAD SPEED  WARNING ALERT @39KM/HR"
+  },
+  {
+    "EventTypeId": "-6269292408294338372",
+    "EventType": "Custom",
+    "Description": "Night Driving"
+  },
+  {
+    "EventTypeId": "-2876088445930397117",
+    "ValueName": "Payload",
+    "FormatType": "Value",
+    "DisplayUnits": "Tonnes",
+    "EventType": "Custom",
+    "Description": "NUMBER OF TRUCKS LOAD"
+  },
+  {
+    "EventTypeId": "-2132221386692446025",
+    "ValueName": "Current date/time",
+    "FormatType": "DateTime",
+    "EventType": "Custom",
+    "Description": "One Hour Delay"
+  },
+  {
+    "EventTypeId": "-3585979753915241571",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Custom",
+    "Description": "OS along Akansokoto T-junction (Akpabuyo) @35km/hr"
+  },
+  {
+    "EventTypeId": "-1133441927994276104",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Custom",
+    "Description": "OS along Akpabuyo to Atimbo Bridge @30km/hr"
+  },
+  {
+    "EventTypeId": "7889546856698917840",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Custom",
+    "Description": "OS along Mfamosing Plant to Akansoko @35km/hr"
+  },
+  {
+    "EventTypeId": "-6919108075175114342",
+    "EventType": "Custom",
+    "Description": "OV"
+  },
+  {
+    "EventTypeId": "7807167001916743517",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Custom",
+    "Description": "Over speeding along Speed Zone >20km/hr"
+  },
+  {
+    "EventTypeId": "-7332213877966046030",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Custom",
+    "Description": "Over speeding excessively"
+  },
+  {
+    "EventTypeId": "8943892358349006708",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Custom",
+    "Description": "Overspeeding (Under Development)"
+  },
+  {
+    "EventTypeId": "7781956074890246210",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Custom",
+    "Description": "Overspeeding @ SpeedZone Area@greater 4okm/hr"
+  },
+  {
+    "EventTypeId": "6326522481558866401",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Custom",
+    "Description": "Overspeeding along 15km/hr speed zone"
+  },
+  {
+    "EventTypeId": "-7488776440556144298",
+    "ValueName": "Payload",
+    "FormatType": "Value",
+    "DisplayUnits": "Tonnes",
+    "EventType": "Custom",
+    "Description": "Payload 5 mins Tick"
+  },
+  {
+    "EventTypeId": "-6816288445792968211",
+    "ValueName": "Payload",
+    "FormatType": "Value",
+    "DisplayUnits": "Tonnes",
+    "EventType": "Custom",
+    "Description": "Payload at Parking"
+  },
+  {
+    "EventTypeId": "2127203998551052746",
+    "ValueName": "Payload",
+    "FormatType": "Value",
+    "DisplayUnits": "Tonnes",
+    "EventType": "Custom",
+    "Description": "Payload at Parking (No Mode)"
+  },
+  {
+    "EventTypeId": "-641113202815242395",
+    "ValueName": "Payload",
+    "FormatType": "Value",
+    "DisplayUnits": "Tonnes",
+    "EventType": "Custom",
+    "Description": "Payload Detected on Asset Greater than 20 ton"
+  },
+  {
+    "EventTypeId": "6746915803169144506",
+    "ValueName": "Payload",
+    "FormatType": "Value",
+    "DisplayUnits": "Tonnes",
+    "EventType": "Custom",
+    "Description": "payload Reduction"
+  },
+  {
+    "EventTypeId": "6407638900019728935",
+    "ValueName": "Payload",
+    "FormatType": "Value",
+    "DisplayUnits": "Tonnes",
+    "EventType": "Custom",
+    "Description": "Payload Tick 1 min"
+  },
+  {
+    "EventTypeId": "-4021453465424618242",
+    "EventType": "Custom",
+    "Description": "Possible Harness Disconnection"
+  },
+  {
+    "EventTypeId": "-4719031188278129407",
+    "ValueName": "Time Since Ignition On",
+    "FormatType": "Seconds",
+    "DisplayUnits": "seconds",
+    "EventType": "Custom",
+    "Description": "Possible Loss of Speed"
+  },
+  {
+    "EventTypeId": "-4449001562545159009",
+    "EventType": "Custom",
+    "Description": "Possible OBC Tampering"
+  },
+  {
+    "EventTypeId": "1726724874079510650",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Custom",
+    "Description": "POSSIBLE TAMP DRIVING WITHOUT DRIVER PLUG TSL"
+  },
+  {
+    "EventTypeId": "-368284388509977589",
+    "ValueName": "Payload",
+    "FormatType": "Value",
+    "DisplayUnits": "Tonnes",
+    "EventType": "Custom",
+    "Description": "QUARRY LOAD COUNTS"
+  },
+  {
+    "EventTypeId": "-8715368993478032515",
+    "ValueName": "Payload",
+    "FormatType": "Value",
+    "DisplayUnits": "Tonnes",
+    "EventType": "Custom",
+    "Description": "QUARRY LOAD COUNTS @>20T"
+  },
+  {
+    "EventTypeId": "-5061180788966743327",
+    "ValueName": "Payload",
+    "FormatType": "Value",
+    "DisplayUnits": "Tonnes",
+    "EventType": "Custom",
+    "Description": "QUARRY TRUCK OFFLOAD"
+  },
+  {
+    "EventTypeId": "1035608492227161572",
+    "ValueName": "Trip distance",
+    "FormatType": "DistanceKilometers",
+    "DisplayUnits": "km",
+    "EventType": "Custom",
+    "Description": "READYMIX 1HR DELAY"
+  },
+  {
+    "EventTypeId": "8787475716055485303",
+    "ValueName": "Time in mode",
+    "FormatType": "Seconds",
+    "DisplayUnits": "seconds",
+    "EventType": "Custom",
+    "Description": "ReadyMix 90mins Delay @Any Location"
+  },
+  {
+    "EventTypeId": "7797790953090860934",
+    "EventType": "Custom",
+    "Description": "Security - Panic Button Triggered"
+  },
+  {
+    "EventTypeId": "1672282679974998598",
+    "ValueName": "Fuel Probe escort",
+    "FormatType": "Value",
+    "DisplayUnits": "l",
+    "EventType": "Custom",
+    "Description": "Start Trip Fuel Level"
+  },
+  {
+    "EventTypeId": "7732808521542418259",
+    "ValueName": "fuel level ltr",
+    "FormatType": "Value",
+    "DisplayUnits": "L",
+    "EventType": "Custom",
+    "Description": "Start Trip Fuel Level - Escort Fuel Probe"
+  },
+  {
+    "EventTypeId": "798753028562406514",
+    "ValueName": "Payload",
+    "FormatType": "Value",
+    "DisplayUnits": "Tonnes",
+    "EventType": "Custom",
+    "Description": "Start trip Load sensor - Payload"
+  },
+  {
+    "EventTypeId": "3997343648668412697",
+    "EventType": "Custom",
+    "Description": "Suspicious Battery Disconnection"
+  },
+  {
+    "EventTypeId": "8353536511725134757",
+    "ValueName": "Battery voltage",
+    "FormatType": "Value",
+    "DisplayUnits": "mV",
+    "EventType": "Custom",
+    "Description": "Tampering Test"
+  },
+  {
+    "EventTypeId": "-1893528982076478205",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Custom",
+    "Description": "Test Tampering InterBattery"
+  },
+  {
+    "EventTypeId": "7831521986214550383",
+    "EventType": "Custom",
+    "Description": "Time exceeded at the VIO/"
+  },
+  {
+    "EventTypeId": "-5214433958699199798",
+    "ValueName": "GPS number of satellites",
+    "FormatType": "Value",
+    "EventType": "Custom",
+    "Description": "TRIP"
+  },
+  {
+    "EventTypeId": "1948143764153178508",
+    "ValueName": "GPS number of satellites",
+    "FormatType": "Value",
+    "EventType": "Custom",
+    "Description": "TRIP WITHOUT GPS"
+  },
+  {
+    "EventTypeId": "4250686965290100090",
+    "ValueName": "Payload",
+    "FormatType": "Value",
+    "DisplayUnits": "Tonnes",
+    "EventType": "Custom",
+    "Description": "TRUCK LOAD DURATION"
+  },
+  {
+    "EventTypeId": "7763405431436809198",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Custom",
+    "Description": "TSL - OV"
+  },
+  {
+    "EventTypeId": "-1449962269383958582",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Custom",
+    "Description": "TSL - OV TSL (10 Sec)"
+  },
+  {
+    "EventTypeId": "1073563451726332763",
+    "EventType": "Custom",
+    "Description": "TSL -ND - TSL"
+  },
+  {
+    "EventTypeId": "2070930203595427905",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Custom",
+    "Description": "TSL -OV WARNING TSL @50"
+  },
+  {
+    "EventTypeId": "6734356215208423595",
+    "ValueName": "Time Since SubTrip Depart",
+    "FormatType": "Value",
+    "DisplayUnits": "Hours",
+    "EventType": "Custom",
+    "Description": "TSL 3.5 HRS Non Stop Driving"
+  },
+  {
+    "EventTypeId": "-8633727575010530462",
+    "ValueName": "Time Since SubTrip Depart",
+    "FormatType": "Value",
+    "DisplayUnits": "Hours",
+    "EventType": "Custom",
+    "Description": "TSL 3hrs NONSTOP DRIVING"
+  },
+  {
+    "EventTypeId": "-3801122656767775452",
+    "ValueName": "Time Since SubTrip Depart",
+    "FormatType": "Value",
+    "DisplayUnits": "Hours",
+    "EventType": "Custom",
+    "Description": "TSL Drivers HOS Alert 3.8hrs"
+  },
+  {
+    "EventTypeId": "-7487506617079664387",
+    "ValueName": "GPRS running total byte count",
+    "FormatType": "Value",
+    "DisplayUnits": "Bytes",
+    "EventType": "Custom",
+    "Description": "TSL GPRS FAULT"
+  },
+  {
+    "EventTypeId": "9117356293435902869",
+    "ValueName": "GPS distance since last valid reading",
+    "FormatType": "DistanceMeters",
+    "DisplayUnits": "m",
+    "EventType": "Custom",
+    "Description": "TSL GPS FAULT"
+  },
+  {
+    "EventTypeId": "7267118250410213395",
+    "ValueName": "GSM signal quality",
+    "FormatType": "Value",
+    "EventType": "Custom",
+    "Description": "TSL GSM FAULT"
+  },
+  {
+    "EventTypeId": "5371382953697912620",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Custom",
+    "Description": "TSL Harsh Acceleration"
+  },
+  {
+    "EventTypeId": "-8923642516729627517",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Custom",
+    "Description": "TSL HB"
+  },
+  {
+    "EventTypeId": "-4686144027167669448",
+    "EventType": "Custom",
+    "Description": "TSL MAIN POWER FAULT"
+  },
+  {
+    "EventTypeId": "8990279626132988169",
+    "ValueName": "Time Since SubTrip Depart",
+    "FormatType": "Value",
+    "DisplayUnits": "Hours",
+    "EventType": "Custom",
+    "Description": "TSL SPEED SENDER FAULT"
+  },
+  {
+    "EventTypeId": "5632365139523091347",
+    "ValueName": "Time Since Ignition On",
+    "FormatType": "Seconds",
+    "DisplayUnits": "seconds",
+    "EventType": "Custom",
+    "Description": "Vehicle idling"
+  },
+  {
+    "EventTypeId": "6580089777669778000",
+    "ValueName": "GPS distance since last valid reading",
+    "FormatType": "DistanceMeters",
+    "DisplayUnits": "m",
+    "EventType": "Custom",
+    "Description": "YI - GO DELAY"
+  },
+  {
+    "EventTypeId": "-4141095325463117971",
+    "EventType": "Custom",
+    "Description": "YIGO Alert"
+  },
+  {
+    "EventTypeId": "-1374044786876978699",
+    "ValueName": "Battery voltage",
+    "FormatType": "Value",
+    "DisplayUnits": "mV",
+    "EventType": "Default",
+    "Description": "* Diagnostic: Vehicle Battery Voltage"
+  },
+  {
+    "EventTypeId": "-4950190839529718443",
+    "EventType": "Default",
+    "Description": "* Ignition Off"
+  },
+  {
+    "EventTypeId": "8242796377286834188",
+    "EventType": "Default",
+    "Description": "* Ignition On"
+  },
+  {
+    "EventTypeId": "-1108723664337353906",
+    "ValueName": "Battery voltage",
+    "FormatType": "Value",
+    "DisplayUnits": "mV",
+    "EventType": "Default",
+    "Description": "* Low Battery"
+  },
+  {
+    "EventTypeId": "-1912032722388075087",
+    "ValueName": "Battery voltage",
+    "FormatType": "Value",
+    "DisplayUnits": "mV",
+    "EventType": "Default",
+    "Description": "* Low Internal Battery"
+  },
+  {
+    "EventTypeId": "-5187123885301764144",
+    "EventType": "Default",
+    "Description": "* Panic Alert"
+  },
+  {
+    "EventTypeId": "2841595138250378900",
+    "EventType": "Default",
+    "Description": "* Power Disconnected"
+  },
+  {
+    "EventTypeId": "7042125390146036684",
+    "EventType": "Default",
+    "Description": "* Power Reconnected"
+  },
+  {
+    "EventTypeId": "926919548881520877",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Default",
+    "Description": "* Road Speed Limit Exceeded"
+  },
+  {
+    "EventTypeId": "-7743386764194853504",
+    "ValueName": "3-Axis Liftoff Severity",
+    "FormatType": "Value",
+    "DisplayUnits": "",
+    "EventType": "Default",
+    "Description": "3-Axis - Lift Off"
+  },
+  {
+    "EventTypeId": "5778168543245285440",
+    "ValueName": "3-Axis Impact Severity",
+    "FormatType": "Value",
+    "DisplayUnits": "",
+    "EventType": "Default",
+    "Description": "3-Axis - Possible Accident"
+  },
+  {
+    "EventTypeId": "-3266057215132991570",
+    "ValueName": "3-Axis X-Axis Rotation",
+    "FormatType": "Value",
+    "DisplayUnits": "",
+    "EventType": "Default",
+    "Description": "3-Axis - Rollover"
+  },
+  {
+    "EventTypeId": "3410000371978983850",
+    "ValueName": "3-Axis Road Roughness Severity",
+    "FormatType": "Value",
+    "DisplayUnits": "",
+    "EventType": "Default",
+    "Description": "3-Axis - Rough Road"
+  },
+  {
+    "EventTypeId": "-4398378188999478703",
+    "ValueName": "3-Axis Cornering G-Force (High Sensitivity)",
+    "FormatType": "Value",
+    "DisplayUnits": "G",
+    "EventType": "Default",
+    "Description": "3-Axis – Harsh Cornering"
+  },
+  {
+    "EventTypeId": "2590837228958580073",
+    "EventType": "Default",
+    "Description": "Calculate soft clock current date time using calculated time"
+  },
+  {
+    "EventTypeId": "3178206198625947592",
+    "EventType": "Default",
+    "Description": "Calculate soft clock value when after the time change date"
+  },
+  {
+    "EventTypeId": "1566525044567808847",
+    "EventType": "Default",
+    "Description": "Calculate soft clock value when before the time change date"
+  },
+  {
+    "EventTypeId": "8762220870379150868",
+    "ValueName": "Version of configuration that was accepted",
+    "FormatType": "Integer",
+    "EventType": "Default",
+    "Description": "Configuration accepted"
+  },
+  {
+    "EventTypeId": "-2971750131261417491",
+    "EventType": "Default",
+    "Description": "Configuration version changed"
+  },
+  {
+    "EventTypeId": "-2730877443971433118",
+    "EventType": "Default",
+    "Description": "Diagnostic: Satellite communication message limit set"
+  },
+  {
+    "EventTypeId": "-4313373244482545430",
+    "EventType": "Default",
+    "Description": "DriveMate Mode Change"
+  },
+  {
+    "EventTypeId": "-7297492232153881177",
+    "EventType": "Default",
+    "Description": "Driver Assist - Bluetooth Remote"
+  },
+  {
+    "EventTypeId": "-195021832516758230",
+    "EventType": "Default",
+    "Description": "Firmware error"
+  },
+  {
+    "EventTypeId": "-8588945320609074370",
+    "EventType": "Default",
+    "Description": "Firmware info"
+  },
+  {
+    "EventTypeId": "-2998837133460910260",
+    "EventType": "Default",
+    "Description": "Firmware version changed"
+  },
+  {
+    "EventTypeId": "-1009815199714528629",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Default",
+    "Description": "In-cab road speed over speeding"
+  },
+  {
+    "EventTypeId": "-2296465401251079776",
+    "ValueName": "Speed monitoring - Over speeding value",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Default",
+    "Description": "In-cab road speed over speeding - EXCESSIVE DURATION"
+  },
+  {
+    "EventTypeId": "4817078994107181378",
+    "ValueName": "Speed monitoring - Over speeding value",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Default",
+    "Description": "In-cab road speed over speeding - EXCESSIVE SPEED"
+  },
+  {
+    "EventTypeId": "2715425441390540159",
+    "EventType": "Default",
+    "Description": "OBC unit date changed"
+  },
+  {
+    "EventTypeId": "2978313165985390321",
+    "EventType": "Default",
+    "Description": "OBC unit Engine Hours changed"
+  },
+  {
+    "EventTypeId": "-6717396111168447572",
+    "EventType": "Default",
+    "Description": "OBC unit odometer changed"
+  },
+  {
+    "EventTypeId": "6455806276341189645",
+    "EventType": "Default",
+    "Description": "OBC unit reset"
+  },
+  {
+    "EventTypeId": "-4596269900191457380",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Default",
+    "Description": "Over speeding - TIERED"
+  },
+  {
+    "EventTypeId": "4360614301289230131",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Default",
+    "Description": "Over speeding in location"
+  },
+  {
+    "EventTypeId": "1062305132618114225",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "Default",
+    "Description": "Over speeding in location - EXCESSIVE DURATION"
+  },
+  {
+    "EventTypeId": "-8136342741862439235",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "Default",
+    "Description": "Over speeding in location - EXCESSIVE SPEED"
+  },
+  {
+    "EventTypeId": "7337193410206946216",
+    "EventType": "Default",
+    "Description": "Passenger IDed"
+  },
+  {
+    "EventTypeId": "341083421588912423",
+    "EventType": "Default",
+    "Description": "Record trip Driver picture"
+  },
+  {
+    "EventTypeId": "-2864371101042705250",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Default",
+    "Description": "Road Speed Overspeeding"
+  },
+  {
+    "EventTypeId": "-8144084955119801250",
+    "ValueName": "RPM calibration pulses",
+    "FormatType": "Value",
+    "EventType": "Default",
+    "Description": "RPM calibrated (calibration plug)"
+  },
+  {
+    "EventTypeId": "-8156819268807087992",
+    "EventType": "Default",
+    "Description": "Settings version changed"
+  },
+  {
+    "EventTypeId": "-2399821658786872464",
+    "ValueName": "Speed calibration pulses",
+    "FormatType": "Value",
+    "EventType": "Default",
+    "Description": "Speed calibrated (calibration plug)"
+  },
+  {
+    "EventTypeId": "-7404556609847719554",
+    "ValueName": "Speed calibration pulses",
+    "FormatType": "Value",
+    "EventType": "Default",
+    "Description": "Speed calibrated (from GPS velocity)"
+  },
+  {
+    "EventTypeId": "-5725594963738269514",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Default",
+    "Description": "Speeding - Tiered"
+  },
+  {
+    "EventTypeId": "3954175762578748126",
+    "EventType": "Default",
+    "Description": "Store new values for time deviation calculation"
+  },
+  {
+    "EventTypeId": "6439752883345253459",
+    "EventType": "Default",
+    "Description": "Sub-trip end"
+  },
+  {
+    "EventTypeId": "-3082867732244905664",
+    "EventType": "Default",
+    "Description": "Sub-trip start"
+  },
+  {
+    "EventTypeId": "3311811324903296727",
+    "EventType": "Default",
+    "Description": "Swap Unit function executed"
+  },
+  {
+    "EventTypeId": "862100186336151561",
+    "EventType": "Default",
+    "Description": "Trip End"
+  },
+  {
+    "EventTypeId": "297912159654229926",
+    "EventType": "Default",
+    "Description": "Trip Start"
+  },
+  {
+    "EventTypeId": "9097260569350523093",
+    "ValueName": "Battery voltage",
+    "FormatType": "Value",
+    "DisplayUnits": "mV",
+    "EventType": "Diagnostic",
+    "Description": "Alarm: 12V battery voltage low"
+  },
+  {
+    "EventTypeId": "6395319901179939231",
+    "ValueName": "Battery voltage",
+    "FormatType": "Value",
+    "DisplayUnits": "mV",
+    "EventType": "Diagnostic",
+    "Description": "Alarm: 24V battery voltage low"
+  },
+  {
+    "EventTypeId": "6134282344245331730",
+    "ValueName": "Battery voltage",
+    "FormatType": "Value",
+    "DisplayUnits": "mV",
+    "EventType": "Diagnostic",
+    "Description": "Alarm: Battery Disconnect (Power Down)"
+  },
+  {
+    "EventTypeId": "-1994283131355163206",
+    "EventType": "Diagnostic",
+    "Description": "Alert: No Driver Identified"
+  },
+  {
+    "EventTypeId": "-8461658855093082878",
+    "ValueName": "Deceleration",
+    "FormatType": "Acceleration",
+    "DisplayUnits": "km/h/s",
+    "EventType": "Diagnostic",
+    "Description": "Alert: Possible Accident"
+  },
+  {
+    "EventTypeId": "3302269724320254357",
+    "EventType": "Diagnostic",
+    "Description": "Alert: Possible CAN Tamper"
+  },
+  {
+    "EventTypeId": "7649064213173525415",
+    "EventType": "Diagnostic",
+    "Description": "Alert: Possible Power Tamper"
+  },
+  {
+    "EventTypeId": "-4411742681198849259",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Diagnostic",
+    "Description": "Alert: Possible Speed Spike"
+  },
+  {
+    "EventTypeId": "1265128955935347562",
+    "EventType": "Diagnostic",
+    "Description": "Back panel tamper detected"
+  },
+  {
+    "EventTypeId": "-5216494573062889708",
+    "EventType": "Diagnostic",
+    "Description": "Backup battery disconnected"
+  },
+  {
+    "EventTypeId": "1172621252389666886",
+    "EventType": "Diagnostic",
+    "Description": "Backup battery low"
+  },
+  {
+    "EventTypeId": "5742604598548247598",
+    "EventType": "Diagnostic",
+    "Description": "CAN loss detected"
+  },
+  {
+    "EventTypeId": "2937187362208966035",
+    "EventType": "Diagnostic",
+    "Description": "CAN speed/RPM loss detected"
+  },
+  {
+    "EventTypeId": "6964053236177868627",
+    "EventType": "Diagnostic",
+    "Description": "DI: Fault GPS"
+  },
+  {
+    "EventTypeId": "8616181455636609494",
+    "ValueName": "Engine RPM",
+    "FormatType": "Value",
+    "DisplayUnits": "RPM",
+    "EventType": "Diagnostic",
+    "Description": "DI: Speed sender disconnected"
+  },
+  {
+    "EventTypeId": "-8455139828501255087",
+    "EventType": "Diagnostic",
+    "Description": "Diagnostic: Fault no Engine RPM"
+  },
+  {
+    "EventTypeId": "1760330862833079745",
+    "ValueName": "GPS velocity",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Diagnostic",
+    "Description": "Diagnostic: GPS Velocity At 50km/h Road Speed"
+  },
+  {
+    "EventTypeId": "7488209241153745749",
+    "ValueName": "GPS velocity",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Diagnostic",
+    "Description": "Diagnostic: Maximum GPS Velocity"
+  },
+  {
+    "EventTypeId": "4937386137206941187",
+    "ValueName": "GPRS - connected to network",
+    "FormatType": "Boolean",
+    "EventType": "Diagnostic",
+    "Description": "Diagnostic: No GPRS Coverage"
+  },
+  {
+    "EventTypeId": "-2953343767535203732",
+    "ValueName": "GSM in coverage",
+    "FormatType": "Boolean",
+    "EventType": "Diagnostic",
+    "Description": "Diagnostic: No GSM Coverage"
+  },
+  {
+    "EventTypeId": "1455967831181304324",
+    "EventType": "Diagnostic",
+    "Description": "Diagnostic: Noise on speed line"
+  },
+  {
+    "EventTypeId": "-4657546742634786689",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "Diagnostic",
+    "Description": "Diagnostic: Road Speed At 50 km/h GPS Velocity"
+  },
+  {
+    "EventTypeId": "5772499989462844542",
+    "EventType": "Diagnostic",
+    "Description": "Front panel tamper detected"
+  },
+  {
+    "EventTypeId": "1583185484016020443",
+    "EventType": "Diagnostic",
+    "Description": "GPS antenna disconnected"
+  },
+  {
+    "EventTypeId": "8279699361721477561",
+    "EventType": "Diagnostic",
+    "Description": "GPS jamming"
+  },
+  {
+    "EventTypeId": "-4298158154586517219",
+    "EventType": "Diagnostic",
+    "Description": "Low Battery - Bluetooth Remote"
+  },
+  {
+    "EventTypeId": "-898226872645200439",
+    "EventType": "Diagnostic",
+    "Description": "MiX Vision: Event video requests capped"
+  },
+  {
+    "EventTypeId": "8042369161464075148",
+    "EventType": "Diagnostic",
+    "Description": "Possible GPS jamming"
+  },
+  {
+    "EventTypeId": "-5408020297431180554",
+    "EventType": "External",
+    "Description": "Analog measurement threshold violation"
+  },
+  {
+    "EventTypeId": "368238088758698029",
+    "EventType": "External",
+    "Description": "Asset Towed"
+  },
+  {
+    "EventTypeId": "-224687912639268901",
+    "EventType": "External",
+    "Description": "Coasting detection"
+  },
+  {
+    "EventTypeId": "2277570171010916668",
+    "EventType": "External",
+    "Description": "Driver Authenticated"
+  },
+  {
+    "EventTypeId": "3342647204714396275",
+    "EventType": "External",
+    "Description": "Driving Without Authentication"
+  },
+  {
+    "EventTypeId": "5053975687365826057",
+    "ValueName": "EV CAN: Charging status",
+    "FormatType": "Value",
+    "EventType": "External",
+    "Description": "EV CAN: Charger Status"
+  },
+  {
+    "EventTypeId": "-7995443436338294858",
+    "EventType": "External",
+    "Description": "Excessive idle"
+  },
+  {
+    "EventTypeId": "520528154139884495",
+    "EventType": "External",
+    "Description": "External Battery Back To Normal"
+  },
+  {
+    "EventTypeId": "4991950855352486866",
+    "EventType": "External",
+    "Description": "External Battery Low"
+  },
+  {
+    "EventTypeId": "1342456372392597542",
+    "EventType": "External",
+    "Description": "Frequency measurement threshold violation"
+  },
+  {
+    "EventTypeId": "3197376867782397380",
+    "ValueName": "FM Fuel level",
+    "FormatType": "Value",
+    "DisplayUnits": "%",
+    "EventType": "External",
+    "Description": "Fuel Level Low 2"
+  },
+  {
+    "EventTypeId": "9131200121025815971",
+    "EventType": "External",
+    "Description": "Geofence hotspot violation"
+  },
+  {
+    "EventTypeId": "6194584995452978134",
+    "EventType": "External",
+    "Description": "Impact Detect"
+  },
+  {
+    "EventTypeId": "8665272271896415040",
+    "EventType": "External",
+    "Description": "Input 1 Active"
+  },
+  {
+    "EventTypeId": "-3653452785638579830",
+    "EventType": "External",
+    "Description": "Input 1 Inactive"
+  },
+  {
+    "EventTypeId": "6336298301759189034",
+    "EventType": "External",
+    "Description": "Input 2 Active"
+  },
+  {
+    "EventTypeId": "5120704009272499640",
+    "EventType": "External",
+    "Description": "Input 2 Inactive"
+  },
+  {
+    "EventTypeId": "5981394396224030428",
+    "EventType": "External",
+    "Description": "Jamming Detect"
+  },
+  {
+    "EventTypeId": "-3165356972744869962",
+    "EventType": "External",
+    "Description": "No modem zone entry"
+  },
+  {
+    "EventTypeId": "8726265156870611694",
+    "ValueName": "EV CAN: State of charge",
+    "FormatType": "Value",
+    "DisplayUnits": "%",
+    "EventType": "External",
+    "Description": "Observability: State of Charge"
+  },
+  {
+    "EventTypeId": "-1745349734229775958",
+    "EventType": "External",
+    "Description": "Power Disconnect"
+  },
+  {
+    "EventTypeId": "2001831315598063183",
+    "EventType": "External",
+    "Description": "Power Reconnect"
+  },
+  {
+    "EventTypeId": "-2222238722129534673",
+    "EventType": "External",
+    "Description": "Speed detected during ignition off"
+  },
+  {
+    "EventTypeId": "-7829071210251363138",
+    "EventType": "External",
+    "Description": "Tamper detected"
+  },
+  {
+    "EventTypeId": "-3792298274765039854",
+    "ValueName": "Ignition Voltage",
+    "FormatType": "Value",
+    "DisplayUnits": "mV",
+    "EventType": "Hidden",
+    "Description": "Active ignition state change"
+  },
+  {
+    "EventTypeId": "-6266869554747599730",
+    "EventType": "Hidden",
+    "Description": "Active track point"
+  },
+  {
+    "EventTypeId": "-8462656232830278080",
+    "EventType": "Hidden",
+    "Description": "Active Trail point"
+  },
+  {
+    "EventTypeId": "7749185914194201772",
+    "EventType": "Hidden",
+    "Description": "COMMS: BOT Download"
+  },
+  {
+    "EventTypeId": "8811449913201493072",
+    "EventType": "Hidden",
+    "Description": "COMMS: EOT Download"
+  },
+  {
+    "EventTypeId": "-503899021474982347",
+    "EventType": "Hidden",
+    "Description": "COMMS: Terminal Event Download Request"
+  },
+  {
+    "EventTypeId": "3762264000645059186",
+    "ValueName": "Version of configuration that was accepted",
+    "FormatType": "Integer",
+    "EventType": "Hidden",
+    "Description": "Configuration confirmed"
+  },
+  {
+    "EventTypeId": "-5885026884290222700",
+    "EventType": "Hidden",
+    "Description": "End of trip call back request"
+  },
+  {
+    "EventTypeId": "-4479498118140367800",
+    "EventType": "Hidden",
+    "Description": "Final active track point"
+  },
+  {
+    "EventTypeId": "-5202712496663974930",
+    "EventType": "Hidden",
+    "Description": "High priority active track point"
+  },
+  {
+    "EventTypeId": "-593681484296749964",
+    "EventType": "Hidden",
+    "Description": "SMS: Daily limit reached"
+  },
+  {
+    "EventTypeId": "-6577918909540725685",
+    "EventType": "Hidden",
+    "Description": "SMS: Near daily limit"
+  },
+  {
+    "EventTypeId": "8515032094046493680",
+    "EventType": "Hidden",
+    "Description": "Unmatched Extended Driver ID"
+  },
+  {
+    "EventTypeId": "8513466422555379336",
+    "EventType": "HosViolation",
+    "Description": "109:Cycle On Duty"
+  },
+  {
+    "EventTypeId": "4462786787242785826",
+    "EventType": "HosViolation",
+    "Description": "111:Cycle On Duty Without Required Off Duty"
+  },
+  {
+    "EventTypeId": "4860548664254319917",
+    "EventType": "HosViolation",
+    "Description": "112:Cycle Off Duty Periods"
+  },
+  {
+    "EventTypeId": "6593298508393752040",
+    "EventType": "HosViolation",
+    "Description": "203:Daily Driving"
+  },
+  {
+    "EventTypeId": "-3713459320596572035",
+    "EventType": "HosViolation",
+    "Description": "204:Daily Off Duty Deferral"
+  },
+  {
+    "EventTypeId": "-4323406878300661891",
+    "EventType": "HosViolation",
+    "Description": "205:Daily Off Duty"
+  },
+  {
+    "EventTypeId": "-7187426481580122107",
+    "EventType": "HosViolation",
+    "Description": "206:Daily Off Duty Not For Shift Reset"
+  },
+  {
+    "EventTypeId": "626334446554218316",
+    "EventType": "HosViolation",
+    "Description": "207:Daily On Duty Maximum"
+  },
+  {
+    "EventTypeId": "-5500972847847627848",
+    "EventType": "HosViolation",
+    "Description": "213:Daily Driving Without Break"
+  },
+  {
+    "EventTypeId": "474146278155760230",
+    "EventType": "HosViolation",
+    "Description": "214:Daily Driving"
+  },
+  {
+    "EventTypeId": "1046475570982599663",
+    "EventType": "HosViolation",
+    "Description": "215:Daily Rest"
+  },
+  {
+    "EventTypeId": "788934116659239970",
+    "EventType": "HosViolation",
+    "Description": "507:Shift Driving"
+  },
+  {
+    "EventTypeId": "-2447872976812872480",
+    "EventType": "HosViolation",
+    "Description": "508:Shift Break"
+  },
+  {
+    "EventTypeId": "6781060876286061560",
+    "EventType": "HosViolation",
+    "Description": "509:Shift On Duty"
+  },
+  {
+    "EventTypeId": "-1355416219707714846",
+    "EventType": "HosViolation",
+    "Description": "514:Shift Total"
+  },
+  {
+    "EventTypeId": "-7264907666821676844",
+    "EventType": "HosViolation",
+    "Description": "701:Weekly Rest"
+  },
+  {
+    "EventTypeId": "-3018210039805496856",
+    "EventType": "HosViolation",
+    "Description": "702:Two Weekly Rest"
+  },
+  {
+    "EventTypeId": "-5657734287350940835",
+    "EventType": "HosViolation",
+    "Description": "703:Weekly Driving"
+  },
+  {
+    "EventTypeId": "-6493888540163318841",
+    "EventType": "HosViolation",
+    "Description": "704:Two Weekly Driving"
+  },
+  {
+    "EventTypeId": "4471291987945988425",
+    "EventType": "HosViolation",
+    "Description": "706:Reduced Rest Compensation"
+  },
+  {
+    "EventTypeId": "7381579521304264993",
+    "EventType": "HosViolation",
+    "Description": "801:Continuous Driving"
+  },
+  {
+    "EventTypeId": "-9172323129900124816",
+    "EventType": "HosViolation",
+    "Description": "802:Daily Rest"
+  },
+  {
+    "EventTypeId": "-8065777869118148601",
+    "EventType": "HosViolation",
+    "Description": "805:Weekly Rest"
+  },
+  {
+    "EventTypeId": "5016057723140880891",
+    "EventType": "HosViolation",
+    "Description": "806:Daily Driving"
+  },
+  {
+    "EventTypeId": "7417918196186286721",
+    "EventType": "HosViolation",
+    "Description": "808:Driving in 24H period"
+  },
+  {
+    "EventTypeId": "5448669289706557268",
+    "EventType": "HosViolation",
+    "Description": "809:Required Rest In 24 Hours"
+  },
+  {
+    "EventTypeId": "7576360609625154071",
+    "EventType": "HosViolation",
+    "Description": "811:Driving in 7 day period"
+  },
+  {
+    "EventTypeId": "3255191394606345900",
+    "EventType": "HosViolation",
+    "Description": "812:Required Rest In 7 days"
+  },
+  {
+    "EventTypeId": "1268987714023675166",
+    "EventType": "HosViolation",
+    "Description": "815:Required Rest In 14 days"
+  },
+  {
+    "EventTypeId": "6516311050243386436",
+    "EventType": "HosViolation",
+    "Description": "821:Rest block long (11:00h, BFM 12:00h)"
+  },
+  {
+    "EventTypeId": "216284886120432354",
+    "EventType": "HosViolation",
+    "Description": "822:Rest block medium (8:00h, BFM 9:00h)"
+  },
+  {
+    "EventTypeId": "-9176671270936746107",
+    "EventType": "HosViolation",
+    "Description": "823:Rest block short (5:30h, BFM 6:15h)"
+  },
+  {
+    "EventTypeId": "6431581090744603609",
+    "EventType": "HosViolation",
+    "Description": "824:Driving in 14 day period"
+  },
+  {
+    "EventTypeId": "8310203122876257133",
+    "EventType": "HosViolation",
+    "Description": "825: Required Rest In 52 Hours"
+  },
+  {
+    "EventTypeId": "6365240090597652472",
+    "EventType": "HosViolation",
+    "Description": "829:Driving in 28 day period"
+  },
+  {
+    "EventTypeId": "1154155671739782144",
+    "EventType": "HosViolation",
+    "Description": "830:Required Rest In 28 days"
+  },
+  {
+    "EventTypeId": "7114384516709768172",
+    "EventType": "HosViolation",
+    "Description": "834:Required Rest In 82 Hours"
+  },
+  {
+    "EventTypeId": "5237475855404103650",
+    "EventType": "HosViolation",
+    "Description": "835:Night Driving"
+  },
+  {
+    "EventTypeId": "1825907491738184089",
+    "EventType": "HosViolation",
+    "Description": "837:Weekly Driving"
+  },
+  {
+    "EventTypeId": "6908615140553864348",
+    "EventType": "HosViolation",
+    "Description": "838:Monthly Driving"
+  },
+  {
+    "EventTypeId": "-5856432860580602666",
+    "EventType": "HosViolation",
+    "Description": "840:Required Rest Before"
+  },
+  {
+    "EventTypeId": "3203334990470836499",
+    "EventType": "HosViolation",
+    "Description": "852:Maximum Consecutive Driving Days"
+  },
+  {
+    "EventTypeId": "5191813006292187858",
+    "EventType": "HosViolation",
+    "Description": "853:Weekly Rolling Reset"
+  },
+  {
+    "EventTypeId": "5093883055575592834",
+    "EventType": "HosViolation",
+    "Description": "854:Maximum Weekly Driving"
+  },
+  {
+    "EventTypeId": "3269849178444244131",
+    "EventType": "HosViolation",
+    "Description": "855:Weekly Rolling On Duty Reset"
+  },
+  {
+    "EventTypeId": "3067265545407279544",
+    "EventType": "HosViolation",
+    "Description": "856:Split Break Reset"
+  },
+  {
+    "EventTypeId": "7018716150654874550",
+    "EventType": "HosViolation",
+    "Description": "857:Maximum Two Week Driving"
+  },
+  {
+    "EventTypeId": "2190406540841410081",
+    "EventType": "HosViolation",
+    "Description": "861:Required Off Duty In Calendar Month "
+  },
+  {
+    "EventTypeId": "4748629011999503251",
+    "EventType": "HosViolation",
+    "Description": "862:Weekly Rest"
+  },
+  {
+    "EventTypeId": "-8300145843408847057",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "MiXVision",
+    "Description": "MiX Vision: Driver distraction"
+  },
+  {
+    "EventTypeId": "-480217926216925926",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "MiXVision",
+    "Description": "MiX Vision: Driver fatigue - eye closing"
+  },
+  {
+    "EventTypeId": "-9097769333405069134",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "MiXVision",
+    "Description": "MiX Vision: Driver fatigue - yawning"
+  },
+  {
+    "EventTypeId": "807549500629766541",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "MiXVision",
+    "Description": "MiX Vision: Driver not wearing seatbelt"
+  },
+  {
+    "EventTypeId": "3044842204790820242",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "MiXVision",
+    "Description": "MiX Vision: Driver smoking"
+  },
+  {
+    "EventTypeId": "-1712533633274024830",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "MiXVision",
+    "Description": "MiX Vision: Following distance warning"
+  },
+  {
+    "EventTypeId": "6698868737266655739",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "MiXVision",
+    "Description": "MiX Vision: Forward collision warning"
+  },
+  {
+    "EventTypeId": "-5035991273750115854",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "MiXVision",
+    "Description": "MiX Vision: GPS loss"
+  },
+  {
+    "EventTypeId": "6181160164493322240",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "MiXVision",
+    "Description": "MiX Vision: Impact detection"
+  },
+  {
+    "EventTypeId": "-8635961249099838535",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "MiXVision",
+    "Description": "MiX Vision: IO1"
+  },
+  {
+    "EventTypeId": "-2371278793880131229",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "MiXVision",
+    "Description": "MiX Vision: IO2"
+  },
+  {
+    "EventTypeId": "-216527532494386576",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "MiXVision",
+    "Description": "MiX Vision: IO3"
+  },
+  {
+    "EventTypeId": "4162063715223910113",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "MiXVision",
+    "Description": "MiX Vision: IO4"
+  },
+  {
+    "EventTypeId": "6664850965887843350",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "MiXVision",
+    "Description": "MiX Vision: IO5"
+  },
+  {
+    "EventTypeId": "-542730912824272048",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "MiXVision",
+    "Description": "MiX Vision: IO6"
+  },
+  {
+    "EventTypeId": "9176760908246167255",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "MiXVision",
+    "Description": "MiX Vision: IO7"
+  },
+  {
+    "EventTypeId": "-8955724976700801044",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "MiXVision",
+    "Description": "MiX Vision: IO8"
+  },
+  {
+    "EventTypeId": "670980146124694777",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "MiXVision",
+    "Description": "MiX Vision: Lane departure warning"
+  },
+  {
+    "EventTypeId": "659111636580588469",
+    "EventType": "MiXVision",
+    "Description": "MiX Vision: Lens covered"
+  },
+  {
+    "EventTypeId": "1046470586347404899",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "MiXVision",
+    "Description": "MiX Vision: Low voltage"
+  },
+  {
+    "EventTypeId": "9216119224330894107",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "MiXVision",
+    "Description": "MiX Vision: Manual alert"
+  },
+  {
+    "EventTypeId": "5790861721889710462",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "MiXVision",
+    "Description": "MiX Vision: Mobile phone distraction"
+  },
+  {
+    "EventTypeId": "-4519354236393265619",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "MiXVision",
+    "Description": "MiX Vision: Motion detection"
+  },
+  {
+    "EventTypeId": "4182509794703245564",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "MiXVision",
+    "Description": "MiX Vision: No driver"
+  },
+  {
+    "EventTypeId": "1825368649923909495",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "MiXVision",
+    "Description": "MiX Vision: Pedestrian collision warning"
+  },
+  {
+    "EventTypeId": "280540917853524601",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "MiXVision",
+    "Description": "MiX Vision: Power loss"
+  },
+  {
+    "EventTypeId": "401009318098363779",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "MiXVision",
+    "Description": "MiX Vision: Storage exception"
+  },
+  {
+    "EventTypeId": "-8223674420093630323",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "MiXVision",
+    "Description": "MiX Vision: Video loss"
+  },
+  {
+    "EventTypeId": "1182419546659799040",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "[30mins] @JOZA UNAUTHORIZED WAITING AREA"
+  },
+  {
+    "EventTypeId": "1090734258260361216",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "[30MINS] INSIDE OBA TOWN, ANAMBRA"
+  },
+  {
+    "EventTypeId": "1139925454421004288",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "[OVER 120 MINS]  AT NO PARKING ZONE - ITA NYANG"
+  },
+  {
+    "EventTypeId": "1139924493072617472",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "[OVER 30MINS]  AT NO PARKING ZONE - ITA NYANG"
+  },
+  {
+    "EventTypeId": "1136692303063871488",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "[OVER 30MINS] AT BUA CEMENT PLANT, OKPELLA"
+  },
+  {
+    "EventTypeId": "1155649538933399552",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "[OVER 30MINS] AT NO GO ZONE - AMOSO AMSERI ROAD"
+  },
+  {
+    "EventTypeId": "1139924953570775040",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "[OVER 60MINS]  AT NO PARKING ZONE - ITA NYANG"
+  },
+  {
+    "EventTypeId": "1136693222658838528",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "[OVER 60MINS] AT BUA CEMENT PLANT, OKPELLA"
+  },
+  {
+    "EventTypeId": "1090738251049025536",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "[OVER 60MINS] INSIDE OBA TOWN, ANAMBRA"
+  },
+  {
+    "EventTypeId": "1633261066662182912",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "@MFAloadingLocation"
+  },
+  {
+    "EventTypeId": "1549939243975864320",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "12Hour Delay @ Customer Outlet"
+  },
+  {
+    "EventTypeId": "821431794401357824",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "1HR AT MFA"
+  },
+  {
+    "EventTypeId": "746172224975405056",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "20MINS AT A NO GO ZONE"
+  },
+  {
+    "EventTypeId": "834934241369399296",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "2HRS DELAY AT CUSTOMER SITE"
+  },
+  {
+    "EventTypeId": "747980979929669632",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "2HRS YIGO DELAY"
+  },
+  {
+    "EventTypeId": "844728318847307776",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "30MINS AT MFA PALLETIZER"
+  },
+  {
+    "EventTypeId": "1103753163221721088",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "ServerSide",
+    "Description": "A A Global Movement alert"
+  },
+  {
+    "EventTypeId": "1778937825056403456",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "Above6Hours At Depot"
+  },
+  {
+    "EventTypeId": "1778938471742803968",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "Above6Hoursat the plant"
+  },
+  {
+    "EventTypeId": "1522011645427351552",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "ASHAKA TRAILER PARK ENRTY"
+  },
+  {
+    "EventTypeId": "1352000472907554816",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "BHN TRUCKS Duration at EWEKORO PLANT"
+  },
+  {
+    "EventTypeId": "1770603672488603648",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "BULK TANKER 30 MINS AT READYMIX PLANT"
+  },
+  {
+    "EventTypeId": "1483345400116375552",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "BULK TANKER AT NO GO ZONE"
+  },
+  {
+    "EventTypeId": "1770613446147518464",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "BULK TANKER ENRTY READYMIX PLANT"
+  },
+  {
+    "EventTypeId": "1770616024573595648",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "BULK TANKER EXIT"
+  },
+  {
+    "EventTypeId": "799440017140383744",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "CLB MFA OTD DELAY OPS"
+  },
+  {
+    "EventTypeId": "708772493434851328",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "ServerSide",
+    "Description": "Currently moving"
+  },
+  {
+    "EventTypeId": "1145091869987946496",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "Customer Location Entry Joza"
+  },
+  {
+    "EventTypeId": "1408696814156259328",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "DEFROST EWEKORO PLANT ENTRY"
+  },
+  {
+    "EventTypeId": "1408699099607805952",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "DEFROST EWEKORO PLANT EXIT"
+  },
+  {
+    "EventTypeId": "740681307730010112",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "DELAY (3HRS) AT ALL TRANSPORTERS' YARDS"
+  },
+  {
+    "EventTypeId": "715729972747087872",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "Delay any location"
+  },
+  {
+    "EventTypeId": "1560647819948630016",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "Delay at Joza Yard above 2hours"
+  },
+  {
+    "EventTypeId": "1092664702983086080",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "Delay at Locations GPC"
+  },
+  {
+    "EventTypeId": "1295846431422914560",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "Delay@Plantabove6hrs"
+  },
+  {
+    "EventTypeId": "1295900451168559104",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "Delay@ThePlantabove6hrs"
+  },
+  {
+    "EventTypeId": "1777000554968518656",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "Delay@Yard above 24hrs"
+  },
+  {
+    "EventTypeId": "1149115830331244544",
+    "ValueName": "Trip distance",
+    "FormatType": "DistanceKilometers",
+    "DisplayUnits": "km",
+    "EventType": "ServerSide",
+    "Description": "Distance At Location LH Global Extract"
+  },
+  {
+    "EventTypeId": "708826753329565696",
+    "ValueName": "Trip distance",
+    "FormatType": "DistanceKilometers",
+    "DisplayUnits": "km",
+    "EventType": "ServerSide",
+    "Description": "Distance in location"
+  },
+  {
+    "EventTypeId": "1536860725801172992",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "Duration above 30mins @ Odukpani - Itu road"
+  },
+  {
+    "EventTypeId": "1722713217883086848",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "Duration above 30minutes @MFAVIO"
+  },
+  {
+    "EventTypeId": "1722714379249569792",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "Duration above 30Minutes@MFATarmac"
+  },
+  {
+    "EventTypeId": "1523110248492822528",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "Duration above 6hrs @VIO"
+  },
+  {
+    "EventTypeId": "1522013433534644224",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "DURATION AT ASHAKA TRAILER PARK"
+  },
+  {
+    "EventTypeId": "708770731256729600",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "Duration withing Mfamosing"
+  },
+  {
+    "EventTypeId": "1555159166912479232",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "Enters Mangal cement company"
+  },
+  {
+    "EventTypeId": "1136691845069049856",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "ENTRY - BUA CEMENT PLANT, OKPELLA"
+  },
+  {
+    "EventTypeId": "1121326985100615680",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "ENTRY - TSL NO-GO-ZONE [AKAMPKA QUARRY 2]"
+  },
+  {
+    "EventTypeId": "1090614281786744832",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "ENTRY - TSL NO-GO-ZONE [AKAMPKA]"
+  },
+  {
+    "EventTypeId": "1155648658947448832",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "ENTRY - TSL NO-GO-ZONE [AMOSO - AMSERI ROAD]"
+  },
+  {
+    "EventTypeId": "1111730831666761728",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "ENTRY - UNAUTHORIZED ROUTE [LEMNA ROAD]"
+  },
+  {
+    "EventTypeId": "1348035558719479808",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "ENTRY AKAI - EFFA HOLDING AREA"
+  },
+  {
+    "EventTypeId": "708748748867538944",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "Entry into MFA TRAILER PARK"
+  },
+  {
+    "EventTypeId": "769324015921397760",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "Entry into No go zone Ijora (Readymix)"
+  },
+  {
+    "EventTypeId": "755517679125884928",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "ENTRY INTO NO-GO-ZONE OP CHECK POINT"
+  },
+  {
+    "EventTypeId": "1022925689696903168",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "ENTRY TSL ITORI YARD"
+  },
+  {
+    "EventTypeId": "1090731911956783104",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "ENTRY: OBA TOWN, ANAMBRA STATE"
+  },
+  {
+    "EventTypeId": "1781089062943965184",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "ServerSide",
+    "Description": "EWE GATE OUT LINE 1 & 2 (ENRTY AND EXIT)"
+  },
+  {
+    "EventTypeId": "1781090216198021120",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "EWE GATE OUT LINE 1 & 2 (EXIT)"
+  },
+  {
+    "EventTypeId": "1781084727435337728",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "ServerSide",
+    "Description": "EWE LINE 2 GATE IN (ENTYRY AND EXIT)"
+  },
+  {
+    "EventTypeId": "1781086340308529152",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "EWE LINE 2 GATE IN (EXIT)"
+  },
+  {
+    "EventTypeId": "1782899140972425216",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "ServerSide",
+    "Description": "EWEKORO CEMENT PLANT ENRTY AND EXIT"
+  },
+  {
+    "EventTypeId": "755890975027453952",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "EWK TRIP START OTD BPL"
+  },
+  {
+    "EventTypeId": "725444755824975872",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "GATE IN EWEKORO"
+  },
+  {
+    "EventTypeId": "725446599284498432",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "GATE OUT EWEKORO"
+  },
+  {
+    "EventTypeId": "1092665989950742528",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "ServerSide",
+    "Description": "GPC ASSET MOVEMENT"
+  },
+  {
+    "EventTypeId": "1092665488576225280",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "GPC ENTRY"
+  },
+  {
+    "EventTypeId": "825521500979662848",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "IN TRIP DELAY TSL*"
+  },
+  {
+    "EventTypeId": "1555165050090815488",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "Inside  a No Go ZONE"
+  },
+  {
+    "EventTypeId": "799436299615502336",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "ITORI OTD DELAY FMD"
+  },
+  {
+    "EventTypeId": "799437573529096192",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "ITORI OTD DELAY OPS/SFTY"
+  },
+  {
+    "EventTypeId": "993956720442855424",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "JM West departure"
+  },
+  {
+    "EventTypeId": "825179763897856000",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "LAF TRIP END"
+  },
+  {
+    "EventTypeId": "825099728608362496",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "LAF TRIP START"
+  },
+  {
+    "EventTypeId": "1352066154600898560",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "LH WEST GATE IN TRUCKS"
+  },
+  {
+    "EventTypeId": "1545219611729084416",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "LH WEST TRUCKS MOVEMENT TO EAST"
+  },
+  {
+    "EventTypeId": "1103752247642906624",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "ServerSide",
+    "Description": "Location Entry and Exit"
+  },
+  {
+    "EventTypeId": "1094400594851024896",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "Location Entry for whitesoul"
+  },
+  {
+    "EventTypeId": "708830430148726784",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "Location Exit"
+  },
+  {
+    "EventTypeId": "844686340991672320",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "MFA PALLETIZER ENTRY"
+  },
+  {
+    "EventTypeId": "844727411171844096",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "MFA PALLETIZER EXIT"
+  },
+  {
+    "EventTypeId": "763549918197948416",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "MFA TIME IN"
+  },
+  {
+    "EventTypeId": "708771038804086784",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "ServerSide",
+    "Description": "Moving"
+  },
+  {
+    "EventTypeId": "708771361501237248",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "ServerSide",
+    "Description": "Moving outside time"
+  },
+  {
+    "EventTypeId": "1468129794983649280",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "ServerSide",
+    "Description": "NEW EVACUATION ROAD OVER SPEEDING @45KM/HR"
+  },
+  {
+    "EventTypeId": "740333112861687808",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "NO GO ZONE ENTRY"
+  },
+  {
+    "EventTypeId": "1126230300131033088",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "ServerSide",
+    "Description": "Over Speeding @40km/hr @speedzone"
+  },
+  {
+    "EventTypeId": "1687941418651852800",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "ServerSide",
+    "Description": "Over speeding on 25km/hr Speed zone"
+  },
+  {
+    "EventTypeId": "1687943431902765056",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "ServerSide",
+    "Description": "Overspeeding @20km/hr speedzone"
+  },
+  {
+    "EventTypeId": "1126295174395527168",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "ServerSide",
+    "Description": "OverSpeeding @30km/hr Speed Zone"
+  },
+  {
+    "EventTypeId": "1687942284284895232",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "ServerSide",
+    "Description": "Overspeeding in 30km/hr location"
+  },
+  {
+    "EventTypeId": "1126298227513294848",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "ServerSide",
+    "Description": "Overspeeding@10km/hr speed Zone"
+  },
+  {
+    "EventTypeId": "1126232333802078208",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "ServerSide",
+    "Description": "OverSpeeding@20km/hr SpeedZone"
+  },
+  {
+    "EventTypeId": "1126295947078762496",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "ServerSide",
+    "Description": "Overspeeding@5okm/hr Speed Zone"
+  },
+  {
+    "EventTypeId": "845472293559361536",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "PLANT ACTIVITY"
+  },
+  {
+    "EventTypeId": "1145087840480833536",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "ServerSide",
+    "Description": "PLANT ENTRY AND EXIT"
+  },
+  {
+    "EventTypeId": "1145093099434917888",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "Plant Entry Joza"
+  },
+  {
+    "EventTypeId": "1145093605075042304",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "Plant Exit Joza"
+  },
+  {
+    "EventTypeId": "781005024989847552",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "Point of interest entry"
+  },
+  {
+    "EventTypeId": "1696431037129920512",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "ServerSide",
+    "Description": "QUARRY MFA TRUCK LOAD TRIP COUNT"
+  },
+  {
+    "EventTypeId": "793993805155909632",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "READY MIX LOCATION EXIT"
+  },
+  {
+    "EventTypeId": "793990123600842752",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "ReadyMix  Location Entry"
+  },
+  {
+    "EventTypeId": "801266023148568576",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "ReadyMix 2Hrs Delay"
+  },
+  {
+    "EventTypeId": "801250706202816512",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "ReadyMix CICO"
+  },
+  {
+    "EventTypeId": "1517282051384295424",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "READYMIX CICO DELAY (90MINS)"
+  },
+  {
+    "EventTypeId": "801249709398855680",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "ReadyMix YIGO"
+  },
+  {
+    "EventTypeId": "1397643260773056513",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "ServerSide",
+    "Description": "Speeding above 45km/h"
+  },
+  {
+    "EventTypeId": "1770559924507693056",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "ServerSide",
+    "Description": "Tiered Speed @ 20km/hr"
+  },
+  {
+    "EventTypeId": "1687944635152113664",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "ServerSide",
+    "Description": "Tiered Speed @40km/hr"
+  },
+  {
+    "EventTypeId": "1770582906798989312",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "ServerSide",
+    "Description": "Tiered Speed @45km/hr"
+  },
+  {
+    "EventTypeId": "1770565246672621568",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "ServerSide",
+    "Description": "tiered speed@10km/hr"
+  },
+  {
+    "EventTypeId": "1770561287063777280",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "ServerSide",
+    "Description": "Tiered Speed@15km/hr"
+  },
+  {
+    "EventTypeId": "1770568195034439680",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "ServerSide",
+    "Description": "Tiered Speed@25km/hr"
+  },
+  {
+    "EventTypeId": "1770581063591473152",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "ServerSide",
+    "Description": "Tiered Speed@35km/hr"
+  },
+  {
+    "EventTypeId": "1770584342964428800",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "ServerSide",
+    "Description": "Tiered Speed@50km/hr"
+  },
+  {
+    "EventTypeId": "1770584700767612928",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "ServerSide",
+    "Description": "Tiered speed@55km/hr"
+  },
+  {
+    "EventTypeId": "740337674037264384",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "TRANS YARD DELAY(3HRS)"
+  },
+  {
+    "EventTypeId": "803714500316729344",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "TRANSPORTER YARD DELAY <>"
+  },
+  {
+    "EventTypeId": "1560838410649546752",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "Truck Location"
+  },
+  {
+    "EventTypeId": "1117229865481736192",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "TRULUCK EWEKORO PLANT ENRTY"
+  },
+  {
+    "EventTypeId": "1117230645754052608",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "TRULUCK EWEKORO PLANT EXIT"
+  },
+  {
+    "EventTypeId": "802310535975297024",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "TSL ALONG IKANG RD CLB"
+  },
+  {
+    "EventTypeId": "803672603028885504",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "TSL CLB YARD DELAY(3HRS)"
+  },
+  {
+    "EventTypeId": "802311032625504256",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "TSL FUELING DELAY(45Min)"
+  },
+  {
+    "EventTypeId": "913628350036623360",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "TSL ITU NO STOP ZONE"
+  },
+  {
+    "EventTypeId": "799338839362666496",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "TSL MFA PCKIN PLNT(60Min)"
+  },
+  {
+    "EventTypeId": "799339682487767040",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "TSL MFA PCKN PLNT/JM(60+30)"
+  },
+  {
+    "EventTypeId": "799342226702241792",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "TSL MFA Trailer Park(60Min)"
+  },
+  {
+    "EventTypeId": "799344838026887168",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "TSL MFA Trailer Park/JM(60+30Min)"
+  },
+  {
+    "EventTypeId": "799340141097078784",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "TSL MFA VIO(45Min)"
+  },
+  {
+    "EventTypeId": "798666056786313216",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "TSL YARD ITOR FMD BAY/JM(60+30Min)"
+  },
+  {
+    "EventTypeId": "798688844142149632",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "TSL YARD ITOR FMD PM BAY(180Min)"
+  },
+  {
+    "EventTypeId": "798689666351562752",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "TSL YARD ITOR FMD PM BAY/JM(180+30Min)"
+  },
+  {
+    "EventTypeId": "798673050046402560",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "TSL YARD ITOR FMD QUE ZONE(120Min)"
+  },
+  {
+    "EventTypeId": "798673849818128384",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "TSL YARD ITOR FMD QUE ZONE/JM(120+30Min)"
+  },
+  {
+    "EventTypeId": "798677397098565632",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "TSL YARD ITOR FMD TYRE(30min)"
+  },
+  {
+    "EventTypeId": "798691738266996736",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "TSL YARD ITOR FMD TYRE/JM(30+30Min)"
+  },
+  {
+    "EventTypeId": "797278855141224448",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "TSL YARD ITOR FMD/JM (60+30Min)"
+  },
+  {
+    "EventTypeId": "797277566280925184",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "TSL YARD ITOR OPPS/SAFTEY(60Min)"
+  },
+  {
+    "EventTypeId": "798665241514278912",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "TSL YARD ITORI FMD BAY(60Min)"
+  },
+  {
+    "EventTypeId": "797275794176520192",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "TSL YARD ITORI FMD(60Min)"
+  },
+  {
+    "EventTypeId": "797279426615144448",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "TSL YARD ITORI SFTY INSPECTION JM(60+30Min)"
+  },
+  {
+    "EventTypeId": "926993376660148224",
+    "ValueName": "At location",
+    "FormatType": "Location",
+    "EventType": "ServerSide",
+    "Description": "TSL YARD ITORI SFTY WAITING DONE(60+30Min)"
+  },
+  {
+    "EventTypeId": "1814841846951175422",
+    "EventType": "SoftDeleted",
+    "Description": "Power Disconnect/Reconnect"
+  },
+  {
+    "EventTypeId": "4291175374538259638",
+    "ValueName": "Track trace cornering threshold",
+    "FormatType": "Integer",
+    "DisplayUnits": "mg",
+    "EventType": "System",
+    "Description": "* Harsh Cornering"
+  },
+  {
+    "EventTypeId": "5857752512862302519",
+    "EventType": "System",
+    "Description": "* Input 1 High"
+  },
+  {
+    "EventTypeId": "-382584128531125486",
+    "EventType": "System",
+    "Description": "* Input 1 Low"
+  },
+  {
+    "EventTypeId": "-8466048650882854518",
+    "EventType": "System",
+    "Description": "* Input 2 High"
+  },
+  {
+    "EventTypeId": "-9107232402036844231",
+    "EventType": "System",
+    "Description": "* Input 2 Low"
+  },
+  {
+    "EventTypeId": "-5791393225072583509",
+    "EventType": "System",
+    "Description": "Active Control - plug identification prevented"
+  },
+  {
+    "EventTypeId": "7032263543197595458",
+    "ValueName": "Battery disconnect date/time",
+    "FormatType": "DateTime",
+    "EventType": "System",
+    "Description": "Battery disconnected"
+  },
+  {
+    "EventTypeId": "1817013705984649276",
+    "ValueName": "Battery disconnect date/time",
+    "FormatType": "DateTime",
+    "EventType": "System",
+    "Description": "DI: Battery disconnection"
+  },
+  {
+    "EventTypeId": "6922609100885212728",
+    "EventType": "System",
+    "Description": "DI: GPS velocity as speed fallback"
+  },
+  {
+    "EventTypeId": "-4082655169988672233",
+    "ValueName": "FMS Active Diagnostic Trouble Codes",
+    "FormatType": "Value",
+    "DisplayUnits": "",
+    "EventType": "System",
+    "Description": "Diagnostic trouble code"
+  },
+  {
+    "EventTypeId": "769714021091545261",
+    "ValueName": "FM CAN: Driver Door 1",
+    "FormatType": "Value",
+    "EventType": "System",
+    "Description": "Driver door open"
+  },
+  {
+    "EventTypeId": "4969332656453556881",
+    "ValueName": "Organisation and driver from plug",
+    "FormatType": "CombinedCompanyDriverId",
+    "EventType": "System",
+    "Description": "Driver plug from incorrect organisation"
+  },
+  {
+    "EventTypeId": "5160625119091753479",
+    "ValueName": "FM CAN: Seat Belt State",
+    "FormatType": "Value",
+    "EventType": "System",
+    "Description": "Driver seatbelt not engaged"
+  },
+  {
+    "EventTypeId": "150673821216952582",
+    "ValueName": "Rear door driver side state",
+    "FormatType": "Value",
+    "EventType": "System",
+    "Description": "Driver side rear door open"
+  },
+  {
+    "EventTypeId": "-170173368564016851",
+    "ValueName": "FM Fuel level",
+    "FormatType": "Value",
+    "DisplayUnits": "%",
+    "EventType": "System",
+    "Description": "End of trip fuel tank level percentage"
+  },
+  {
+    "EventTypeId": "-6079465181680378697",
+    "ValueName": "FMS Engine Coolant Temperature",
+    "FormatType": "Value",
+    "DisplayUnits": "°C",
+    "EventType": "System",
+    "Description": "Engine coolant temperature high"
+  },
+  {
+    "EventTypeId": "-2439674153577661748",
+    "ValueName": "FMS Engine fault",
+    "FormatType": "Value",
+    "EventType": "System",
+    "Description": "Engine light (MIL) on"
+  },
+  {
+    "EventTypeId": "4765990693530272682",
+    "ValueName": "FMS Engine Oil Level",
+    "FormatType": "Value",
+    "DisplayUnits": "%",
+    "EventType": "System",
+    "Description": "Engine Oil level low"
+  },
+  {
+    "EventTypeId": "6991607741664227157",
+    "ValueName": "Trip distance",
+    "FormatType": "DistanceKilometers",
+    "DisplayUnits": "km",
+    "EventType": "System",
+    "Description": "Exceeding  3:30 MINUTES Driving"
+  },
+  {
+    "EventTypeId": "7466667059384920677",
+    "ValueName": "FM Peak axle weight - Global axle weight",
+    "FormatType": "WeightKilograms",
+    "DisplayUnits": "kg",
+    "EventType": "System",
+    "Description": "FM Average trip axle weight"
+  },
+  {
+    "EventTypeId": "-1949793629218907327",
+    "EventType": "System",
+    "Description": "FM Brake pedal depressed"
+  },
+  {
+    "EventTypeId": "-7394395334986863787",
+    "EventType": "System",
+    "Description": "FM Clutch disengaged"
+  },
+  {
+    "EventTypeId": "-2178635841064639940",
+    "EventType": "System",
+    "Description": "FM Clutch overload detected"
+  },
+  {
+    "EventTypeId": "6531215122517897828",
+    "EventType": "System",
+    "Description": "FM Cold rev limiter"
+  },
+  {
+    "EventTypeId": "-3110096653983848",
+    "ValueName": "FM Distance remaining to next service",
+    "FormatType": "DistanceKilometers",
+    "DisplayUnits": "km",
+    "EventType": "System",
+    "Description": "FM distance remaining until next service"
+  },
+  {
+    "EventTypeId": "135332957524458266",
+    "EventType": "System",
+    "Description": "FM Free wheel in neutral"
+  },
+  {
+    "EventTypeId": "4015353629289897570",
+    "ValueName": "FM Fuel level",
+    "FormatType": "Value",
+    "DisplayUnits": "%",
+    "EventType": "System",
+    "Description": "FM Fuel level percentage"
+  },
+  {
+    "EventTypeId": "-7573534372081406620",
+    "ValueName": "FM Engine temperature",
+    "FormatType": "Temperature",
+    "DisplayUnits": "°C",
+    "EventType": "System",
+    "Description": "FM High engine temperature"
+  },
+  {
+    "EventTypeId": "-5701437455733308247",
+    "ValueName": "FM High resolution odometer",
+    "FormatType": "DistanceKilometers",
+    "DisplayUnits": "km",
+    "EventType": "System",
+    "Description": "FM High resolution vehicle odometer"
+  },
+  {
+    "EventTypeId": "-2825891163160908288",
+    "EventType": "System",
+    "Description": "FM Low coolant"
+  },
+  {
+    "EventTypeId": "-5446248236033325480",
+    "EventType": "System",
+    "Description": "FM Low oil level detected"
+  },
+  {
+    "EventTypeId": "6493696919812305011",
+    "EventType": "System",
+    "Description": "FM Low oil pressure detected"
+  },
+  {
+    "EventTypeId": "-15027453309101142",
+    "EventType": "System",
+    "Description": "FM PTO engaged"
+  },
+  {
+    "EventTypeId": "-4095709553986617565",
+    "EventType": "System",
+    "Description": "FM PTO violation"
+  },
+  {
+    "EventTypeId": "-7234424673440906692",
+    "ValueName": "FM Retarder torque",
+    "FormatType": "Value",
+    "DisplayUnits": "%",
+    "EventType": "System",
+    "Description": "FM Retarder engaged"
+  },
+  {
+    "EventTypeId": "-4810289911623117396",
+    "EventType": "System",
+    "Description": "FM System relay bypassed"
+  },
+  {
+    "EventTypeId": "4131760940579552197",
+    "EventType": "System",
+    "Description": "FM TCO driving"
+  },
+  {
+    "EventTypeId": "3617533473487879630",
+    "EventType": "System",
+    "Description": "FM TCO overspeed detected"
+  },
+  {
+    "EventTypeId": "8102150977560846786",
+    "EventType": "System",
+    "Description": "FM TCO reversing"
+  },
+  {
+    "EventTypeId": "-6052087359190900380",
+    "EventType": "System",
+    "Description": "FM Temperature wire off"
+  },
+  {
+    "EventTypeId": "3768927012947187868",
+    "ValueName": "FM Total engine hours",
+    "FormatType": "Value",
+    "DisplayUnits": "Hours",
+    "EventType": "System",
+    "Description": "FM Total engine hours"
+  },
+  {
+    "EventTypeId": "1973381465179094554",
+    "EventType": "System",
+    "Description": "GPRS - Session active"
+  },
+  {
+    "EventTypeId": "6454149451280645233",
+    "ValueName": "Acceleration",
+    "FormatType": "Acceleration",
+    "DisplayUnits": "km/h/s",
+    "EventType": "System",
+    "Description": "Harsh acceleration"
+  },
+  {
+    "EventTypeId": "-789180298486952911",
+    "EventType": "System",
+    "Description": "Harsh acceleration - WARNING"
+  },
+  {
+    "EventTypeId": "4750800303282680186",
+    "ValueName": "Deceleration",
+    "FormatType": "Acceleration",
+    "DisplayUnits": "km/h/s",
+    "EventType": "System",
+    "Description": "Harsh braking"
+  },
+  {
+    "EventTypeId": "1733069251178720437",
+    "EventType": "System",
+    "Description": "Harsh braking - WARNING"
+  },
+  {
+    "EventTypeId": "-3393530750645328945",
+    "EventType": "System",
+    "Description": "Idle"
+  },
+  {
+    "EventTypeId": "4650840888823746694",
+    "EventType": "System",
+    "Description": "Idle - excessive"
+  },
+  {
+    "EventTypeId": "-4771988436495079232",
+    "EventType": "System",
+    "Description": "Idle - excessive - WARNING"
+  },
+  {
+    "EventTypeId": "-3321010902227214773",
+    "ValueName": "LoadTech Axle 3 Nett",
+    "FormatType": "WeightTonnes",
+    "DisplayUnits": "t",
+    "EventType": "System",
+    "Description": "LoadTech Axle 3 NETT"
+  },
+  {
+    "EventTypeId": "511804990330000781",
+    "ValueName": "LoadTech Total Gross",
+    "FormatType": "WeightTonnes",
+    "DisplayUnits": "t",
+    "EventType": "System",
+    "Description": "LoadTech Total GROSS"
+  },
+  {
+    "EventTypeId": "5493294468388803696",
+    "ValueName": "Trip distance",
+    "FormatType": "DistanceKilometers",
+    "DisplayUnits": "km",
+    "EventType": "System",
+    "Description": "Night Driving Time"
+  },
+  {
+    "EventTypeId": "-7417774485302453264",
+    "EventType": "System",
+    "Description": "Out of green band driving"
+  },
+  {
+    "EventTypeId": "-7372181092478897411",
+    "ValueName": "Engine RPM",
+    "FormatType": "Value",
+    "DisplayUnits": "RPM",
+    "EventType": "System",
+    "Description": "Over Revving"
+  },
+  {
+    "EventTypeId": "-3890646499157906515",
+    "ValueName": "Road speed",
+    "FormatType": "Speed",
+    "DisplayUnits": "km/h",
+    "EventType": "System",
+    "Description": "Over speeding"
+  },
+  {
+    "EventTypeId": "3358733757456963534",
+    "EventType": "System",
+    "Description": "Over speeding - WARNING"
+  },
+  {
+    "EventTypeId": "-4505528318323158999",
+    "EventType": "System",
+    "Description": "Overtime driving"
+  },
+  {
+    "EventTypeId": "-6331698441835955960",
+    "ValueName": "FM CAN: Passenger Door 1",
+    "FormatType": "Value",
+    "EventType": "System",
+    "Description": "Passenger door open"
+  },
+  {
+    "EventTypeId": "5371300709033963442",
+    "ValueName": "FM CAN: Passenger Seat Belt Status",
+    "FormatType": "Value",
+    "EventType": "System",
+    "Description": "Passenger seatbelt not engaged"
+  },
+  {
+    "EventTypeId": "485554640130427396",
+    "ValueName": "Rear door passenger side state",
+    "FormatType": "Value",
+    "EventType": "System",
+    "Description": "Passenger side rear door open"
+  },
+  {
+    "EventTypeId": "6927212312623806423",
+    "ValueName": "3-Axis Impact Severity",
+    "FormatType": "Value",
+    "DisplayUnits": "",
+    "EventType": "System",
+    "Description": "Possible impact"
+  },
+  {
+    "EventTypeId": "-8345629639166961928",
+    "ValueName": "3-Axis Impact Severity",
+    "FormatType": "Value",
+    "DisplayUnits": "",
+    "EventType": "System",
+    "Description": "Possible impact when parked"
+  },
+  {
+    "EventTypeId": "6063249394960572574",
+    "ValueName": "3-Axis X-Axis Rotation",
+    "FormatType": "Value",
+    "DisplayUnits": "",
+    "EventType": "System",
+    "Description": "Possible Rollover"
+  },
+  {
+    "EventTypeId": "-1436104788329512077",
+    "ValueName": "FM Fuel level",
+    "FormatType": "Value",
+    "DisplayUnits": "%",
+    "EventType": "System",
+    "Description": "Start of trip fuel tank level percentage"
+  }
+]

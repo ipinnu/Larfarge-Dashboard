@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+﻿import { useState, useRef, useEffect } from 'react';
 import { Brain, X, Send, ChevronDown } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { useFleet } from '../context/FleetContext';
@@ -10,23 +10,104 @@ interface Message {
   content: string;
 }
 
-const SYSTEM_PROMPT = `You are ARIA — Asset and Risk Intelligence Advisor — the embedded fleet intelligence system for a logistics fleet management platform operated by Best Practices Limited (BPL).
+const SYSTEM_PROMPT = `You are ARIA — Asset and Risk Intelligence Advisor — embedded fleet intelligence for Best Practices Limited (BPL).
 
-You have access to real-time fleet data, driver safety records, incident history, Safety Vault records, and operational metrics. You answer questions from fleet managers, safety officers, operations managers, and executives.
+Be sharp and brief. 3-5 sentences max unless the question genuinely demands more. Lead with the most important fact. Use specific names, numbers, and vehicles from the data. Never pad or repeat yourself.
 
-Your tone is professional, direct, and concise. You do not give vague answers. You reference specific data, specific drivers, specific incidents, and specific standards (FMCSA BASICs, Nigeria FRSC guidelines, ISO 39001) when relevant.
+Cite standards (FMCSA BASICs, FRSC Nigeria, ISO 39001) only when directly relevant. If data is missing say "not available in current view — check [section]."`;
 
-You are not a chatbot. You are a senior fleet safety advisor embedded in the platform. Every answer should feel like it came from someone who knows this fleet intimately.
+function parseInline(text: string): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  const regex = /\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`/g;
+  let last = 0, key = 0, match: RegExpExecArray | null;
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > last) parts.push(text.slice(last, match.index));
+    if (match[1] !== undefined)
+      parts.push(<strong key={key++} style={{ fontWeight: 700, color: 'var(--cd-text)' }}>{match[1]}</strong>);
+    else if (match[2] !== undefined)
+      parts.push(<em key={key++} style={{ fontStyle: 'italic', opacity: 0.85 }}>{match[2]}</em>);
+    else if (match[3] !== undefined)
+      parts.push(<code key={key++} style={{ fontFamily: 'monospace', fontSize: '0.88em', background: 'rgba(0,120,212,0.12)', padding: '1px 5px', borderRadius: 4 }}>{match[3]}</code>);
+    last = match.index + match[0].length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
 
-When you flag a risk, cite the standard. When you make a recommendation, make it specific and actionable. When you summarize performance, use numbers.
+function renderMessage(content: string): React.ReactNode {
+  const lines = content.split('\n');
+  const elements: React.ReactNode[] = [];
+  let listItems: React.ReactNode[] = [];
+  let listType: 'ul' | 'ol' = 'ul';
 
-Never say "I don't have access to that information" — if data is not in context, say "that data is not available in the current view — check [relevant section] for full detail."`;
+  const flushList = (key: number) => {
+    if (!listItems.length) return;
+    const Tag = listType;
+    elements.push(
+      <Tag key={`list-${key}`} style={{ margin: '4px 0 6px', paddingLeft: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3 }}>
+        {listItems}
+      </Tag>
+    );
+    listItems = [];
+  };
+
+  lines.forEach((line, i) => {
+    if (line.trim() === '') {
+      flushList(i);
+      if (elements.length > 0) elements.push(<div key={`gap-${i}`} style={{ height: 5 }} />);
+      return;
+    }
+    // Headings
+    const h3 = line.match(/^###\s+(.*)/);
+    const h2 = line.match(/^#{1,2}\s+(.*)/);
+    if (h3) {
+      flushList(i);
+      elements.push(<div key={i} style={{ fontSize: 11, fontWeight: 800, color: 'var(--bpl-blue)', textTransform: 'uppercase', letterSpacing: '0.07em', marginTop: 10, marginBottom: 2 }}>{parseInline(h3[1])}</div>);
+      return;
+    }
+    if (h2) {
+      flushList(i);
+      elements.push(<div key={i} style={{ fontSize: 13, fontWeight: 700, color: 'var(--cd-text)', marginTop: 8, marginBottom: 3 }}>{parseInline(h2[1])}</div>);
+      return;
+    }
+    // Bullet
+    const bullet = line.match(/^[-*]\s+(.*)/);
+    if (bullet) {
+      listType = 'ul';
+      listItems.push(
+        <li key={i} style={{ display: 'flex', gap: 7, alignItems: 'flex-start', fontSize: 'inherit' }}>
+          <span style={{ color: 'var(--bpl-blue)', fontWeight: 700, marginTop: 1, flexShrink: 0 }}>·</span>
+          <span style={{ lineHeight: 1.55 }}>{parseInline(bullet[1])}</span>
+        </li>
+      );
+      return;
+    }
+    // Numbered list
+    const num = line.match(/^(\d+)\.\s+(.*)/);
+    if (num) {
+      listType = 'ol';
+      listItems.push(
+        <li key={i} style={{ display: 'flex', gap: 7, alignItems: 'flex-start', fontSize: 'inherit' }}>
+          <span style={{ color: 'var(--bpl-blue)', fontWeight: 700, minWidth: 18, flexShrink: 0 }}>{num[1]}.</span>
+          <span style={{ lineHeight: 1.55 }}>{parseInline(num[2])}</span>
+        </li>
+      );
+      return;
+    }
+    // Paragraph
+    flushList(i);
+    elements.push(<div key={i} style={{ lineHeight: 1.6 }}>{parseInline(line)}</div>);
+  });
+
+  flushList(lines.length);
+  return <>{elements}</>;
+}
 
 const PAGE_LABELS: Record<string, string> = {
   '/': 'Dashboard',
   '/drivers': 'Driver Management',
   '/incidents': 'Incident Intelligence',
-  '/vault': 'Safety Vault',
+  '/safety': 'Safety',
   '/aria': 'ARIA Intelligence',
   '/reports': 'Reports & Reviews',
   '/operations': 'Operations',
@@ -49,7 +130,7 @@ export default function ARIAChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const location = useLocation();
-  const { fleetSafetyScore, redAlertCount, vaultRecords, metadata, events } = useFleet();
+  const { fleetSafetyScore, fleetScoreDelta, redAlertCount, vaultRecords, metadata, events, notifications } = useFleet();
 
   const currentPage = PAGE_LABELS[location.pathname] || location.pathname;
   const watTime = new Date().toLocaleString('en-GB', { timeZone: 'Africa/Lagos', hour12: false });
@@ -60,24 +141,101 @@ export default function ARIAChat() {
   }, [messages, streamingContent]);
 
   const buildContext = () => {
-    const recentEvents = events.slice(0, 20).map(e =>
-      `${e.eventTime ? new Date(e.eventTime).toLocaleString('en-GB', { timeZone: 'Africa/Lagos' }) : 'unknown'} | ${e.label || 'Panic'} | Driver: ${e.driverName || 'Unknown'} | Vehicle: ${e.regNo || e.assetId} | ${e.address || 'No location'}`
-    ).join('\n');
+    const now = Date.now();
+    const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
+    const sevenDaysAgo  = now - 7  * 24 * 60 * 60 * 1000;
 
-    return `Current platform state:
-- Fleet safety score: ${fleetSafetyScore}/100
-- Active red alerts: ${redAlertCount}
-- Open Safety Vault investigations: ${openInvestigations}
-- Vehicles currently active (moving): ${metadata.moving}
-- Total fleet size: ${metadata.totalVehicles}
-- Vehicles parked: ${metadata.parked}
-- Vehicles offline: ${metadata.offline}
-- User role: Fleet Safety Officer
-- Current page: ${currentPage}
-- Date/time: ${watTime} (Lagos, WAT)
+    // Driver incident summary — last 30 days
+    const driverMap: Record<string, { incidents: number; types: Record<string, number>; lastSeen: string }> = {};
+    events.forEach(e => {
+      const name = e.driverName;
+      if (!name || name === 'N/A' || name === 'Unknown') return;
+      if (new Date(e.eventTime || e.timestamp).getTime() < thirtyDaysAgo) return;
+      if (!driverMap[name]) driverMap[name] = { incidents: 0, types: {}, lastSeen: '' };
+      driverMap[name].incidents++;
+      const label = e.label || (e.type === 'panic' ? 'Panic Alert' : 'Event');
+      driverMap[name].types[label] = (driverMap[name].types[label] || 0) + 1;
+      const t = e.eventTime || e.timestamp;
+      if (!driverMap[name].lastSeen || t > driverMap[name].lastSeen) driverMap[name].lastSeen = t;
+    });
+    const topDrivers = Object.entries(driverMap)
+      .sort(([, a], [, b]) => b.incidents - a.incidents)
+      .slice(0, 5)
+      .map(([name, d]) => {
+        const breakdown = Object.entries(d.types).map(([t, c]) => `${t}×${c}`).join(', ');
+        const last = new Date(d.lastSeen).toLocaleString('en-GB', { timeZone: 'Africa/Lagos' });
+        return `  ${name}: ${d.incidents} incidents (${breakdown}) | last: ${last}`;
+      }).join('\n');
 
-Recent events (last 20):
-${recentEvents || 'No recent events loaded'}`;
+    // Event type breakdown — last 7 days
+    const weekEvents = events.filter(e => new Date(e.eventTime || e.timestamp).getTime() >= sevenDaysAgo);
+    const typeMap: Record<string, number> = {};
+    weekEvents.forEach(e => {
+      const label = e.label || (e.type === 'panic' ? 'Panic Alert' : 'Unknown');
+      typeMap[label] = (typeMap[label] || 0) + 1;
+    });
+    const weekBreakdown = Object.entries(typeMap)
+      .sort(([, a], [, b]) => b - a)
+      .map(([label, count]) => `  ${label}: ${count}`)
+      .join('\n');
+
+    // SafeIQ red alerts with analysis
+    const redAlerts = notifications
+      .filter(n => n.analysis?.severity === 'RED')
+      .slice(0, 5)
+      .map(n => {
+        const t = new Date(n.timestamp).toLocaleString('en-GB', { timeZone: 'Africa/Lagos' });
+        const cause = n.analysis?.root_cause?.slice(0, 150) ?? 'Pending analysis';
+        const coaching = n.analysis?.coaching_recommendation?.slice(0, 120) ?? '';
+        return `  [RED] ${n.driver.name} | ${n.vehicle.id} | ${n.magnitude} | ${t}\n    Root cause: ${cause}\n    Coaching: ${coaching}`;
+      }).join('\n');
+
+    // Yellow alerts
+    const yellowAlerts = notifications
+      .filter(n => n.analysis?.severity === 'YELLOW')
+      .slice(0, 5)
+      .map(n => `  [YELLOW] ${n.driver.name} | ${n.vehicle.id} | ${n.magnitude} | ${new Date(n.timestamp).toLocaleString('en-GB', { timeZone: 'Africa/Lagos' })}`)
+      .join('\n');
+
+    // Open vault investigations
+    const openVault = vaultRecords
+      .filter(r => r.status !== 'resolved')
+      .slice(0, 8)
+      .map(r => `  [${r.severity}] ${r.driverName} | ${r.vehicleId} | ${r.type} | Status: ${r.status} | ${r.description?.slice(0, 100)}`)
+      .join('\n');
+
+    // Recent 10 raw events
+    const recentEvents = events.slice(0, 10).map(e => {
+      const t = e.eventTime ? new Date(e.eventTime).toLocaleString('en-GB', { timeZone: 'Africa/Lagos' }) : 'unknown';
+      return `  ${t} | ${e.label || 'Panic'} | ${e.driverName || 'Unknown'} | ${e.regNo || e.assetId} | ${e.address || 'No location'}`;
+    }).join('\n');
+
+    return `ARIA FLEET INTELLIGENCE CONTEXT — ${watTime} (Lagos, WAT)
+Current page: ${currentPage} | User: Fleet Safety Officer
+
+=== FLEET STATUS ===
+Total vehicles: ${metadata.totalVehicles} | Safety score: ${fleetSafetyScore}/100 (${fleetScoreDelta >= 0 ? '+' : ''}${fleetScoreDelta} vs prior 30 days)
+Moving: ${metadata.moving} | Idle: ${metadata.idle} | Excessive Idle: ${metadata.excessiveIdle}
+Stationary: ${metadata.stationary} | Parked: ${metadata.parked} | Temp Inactive: ${metadata.offline} | Inactive: ${metadata.inactive}
+Active red alerts: ${redAlertCount} | Open vault investigations: ${openInvestigations}
+
+=== TOP DRIVERS BY INCIDENTS — LAST 30 DAYS ===
+${topDrivers || '  No driver incident data'}
+
+=== SAFETY EVENT BREAKDOWN — LAST 7 DAYS (${weekEvents.length} total) ===
+${weekBreakdown || '  No events this week'}
+
+=== RED ALERTS (SafeIQ) ===
+${redAlerts || '  None'}
+
+=== YELLOW ALERTS (SafeIQ) ===
+${yellowAlerts || '  None'}
+
+=== OPEN VAULT INVESTIGATIONS ===
+${openVault || '  No open investigations'}
+
+=== RECENT EVENTS (last 30) ===
+${recentEvents || '  No recent events'}`;
   };
 
   const sendMessage = async (text: string) => {
@@ -89,15 +247,7 @@ ${recentEvents || 'No recent events loaded'}`;
     setLoading(true);
     setStreamingContent('');
 
-    const contextMsg: Message = {
-      role: 'user',
-      content: `${buildContext()}\n\n---\n\nUser question: ${text.trim()}`,
-    };
-
-    const history = messages.map(m => ({
-      role: m.role,
-      content: m.content,
-    }));
+    const history = messages.map(m => ({ role: m.role, content: m.content }));
 
     try {
       const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -110,12 +260,12 @@ ${recentEvents || 'No recent events loaded'}`;
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
+          max_tokens: 400,
           system: SYSTEM_PROMPT,
           stream: true,
           messages: [
             ...history,
-            contextMsg,
+            { role: 'user', content: `${buildContext()}\n\n---\n\nUser question: ${text.trim()}` },
           ],
         }),
       });
@@ -227,7 +377,7 @@ ${recentEvents || 'No recent events loaded'}`;
           fontSize: 11,
           color: 'var(--cd-text-muted)',
         }}>
-          <span>Score: <strong style={{ color: fleetSafetyScore >= 80 ? '#16a34a' : fleetSafetyScore >= 60 ? '#d97706' : '#CC0000' }}>{fleetSafetyScore}/100</strong></span>
+          <span>Score: <strong style={{ color: fleetSafetyScore >= 80 ? '#16a34a' : fleetSafetyScore >= 60 ? '#d97706' : fleetSafetyScore >= 45 ? '#e05c2a' : '#CC0000' }}>{fleetSafetyScore}/100</strong></span>
           <span>Active: <strong style={{ color: 'var(--cd-text)' }}>{metadata.moving}</strong></span>
           {redAlertCount > 0 && <span style={{ color: '#CC0000' }}>Red Alerts: <strong>{redAlertCount}</strong></span>}
           <span style={{ marginLeft: 'auto' }}>{currentPage}</span>
@@ -285,12 +435,7 @@ ${recentEvents || 'No recent events loaded'}`;
                 <div style={{ fontSize: 10, color: 'var(--cd-text-muted)', marginBottom: 3, fontWeight: 600 }}>ARIA</div>
               )}
               <div className={`bpl-aria-bubble bpl-aria-bubble-${msg.role}`}>
-                {msg.content.split('\n').map((line, li) => (
-                  <span key={li}>
-                    {line}
-                    {li < msg.content.split('\n').length - 1 && <br />}
-                  </span>
-                ))}
+                {msg.role === 'assistant' ? renderMessage(msg.content) : msg.content}
               </div>
             </div>
           ))}
@@ -299,13 +444,8 @@ ${recentEvents || 'No recent events loaded'}`;
             <div className="bpl-aria-msg bpl-aria-msg-aria">
               <div style={{ fontSize: 10, color: 'var(--cd-text-muted)', marginBottom: 3, fontWeight: 600 }}>ARIA</div>
               <div className="bpl-aria-bubble bpl-aria-bubble-aria">
-                {streamingContent.split('\n').map((line, li) => (
-                  <span key={li}>
-                    {line}
-                    {li < streamingContent.split('\n').length - 1 && <br />}
-                  </span>
-                ))}
-                <span style={{ display: 'inline-block', width: 8, height: 12, background: 'var(--bpl-blue)', borderRadius: 2, marginLeft: 2, animation: 'aria-typing 0.8s ease infinite' }} />
+                {renderMessage(streamingContent)}
+                <span style={{ display: 'inline-block', width: 7, height: 13, background: 'var(--bpl-blue)', borderRadius: 2, marginLeft: 2, verticalAlign: 'text-bottom', animation: 'aria-typing 0.8s ease infinite' }} />
               </div>
             </div>
           )}

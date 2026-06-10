@@ -1,0 +1,570 @@
+import { useMemo } from 'react';
+import {
+  TrendingUp, TrendingDown, Minus, AlertTriangle,
+  ShieldCheck, ShieldAlert, Shield, ArrowRight,
+  Users, Activity, Zap, Target,
+} from 'lucide-react';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
+  RadarChart, PolarGrid, PolarAngleAxis, Radar,
+} from 'recharts';
+import { useFleet } from '../context/FleetContext';
+import type { LogEntry } from '../context/FleetContext';
+
+// ─── scoring weights (mirror computeFleetScore) ──────────────────────────────
+const WEIGHTS: Record<string, number> = {
+  'Harsh Braking': 2,
+  'Harsh Acceleration': 1.5,
+  'Overspeeding': 1.5,
+  'Overspeed Tiered': 1.5,
+  'Harsh Cornering': 1,
+};
+const PANIC_WEIGHT = 5;
+const REFERENCE_FLEET = 50;
+
+function eventWeight(e: LogEntry) {
+  if (e.type === 'panic') return PANIC_WEIGHT;
+  return WEIGHTS[e.label || ''] ?? 0;
+}
+
+function scoreFromEvents(evts: LogEntry[], vehicleCount: number) {
+  const scale = REFERENCE_FLEET / Math.max(vehicleCount, 1);
+  const deduction = evts.reduce((acc, e) => acc + eventWeight(e), 0);
+  return Math.max(30, Math.min(100, Math.round(100 - deduction * scale)));
+}
+
+const HIDDEN = ['Possible Power Tamper', 'Battery Disconnection', 'Battery Disconnected', 'Front Panel Tamper', 'Back Panel Tamper', 'No Blue Key'];
+
+const scoreColor = (s: number) =>
+  s >= 80 ? '#16a34a' : s >= 60 ? '#d97706' : s >= 45 ? '#e05c2a' : '#CC0000';
+
+const scoreLabel = (s: number) =>
+  s >= 80 ? 'Good Standing' : s >= 60 ? 'Needs Attention' : s >= 45 ? 'Below Average' : 'Poor Performance';
+
+// ─── ScoreGauge (standalone, large) ─────────────────────────────────────────
+function ScoreGauge({ score, delta, totalIncidents, vehicleCount }: {
+  score: number; delta: number; totalIncidents: number; vehicleCount: number;
+}) {
+  const color = scoreColor(score);
+  const label = scoreLabel(score);
+  const sublabel = score >= 80
+    ? 'Fleet operating within safe parameters'
+    : score >= 60
+    ? 'Some driving behaviour requires follow-up'
+    : score >= 45
+    ? 'Incident rate above fleet benchmark — coaching recommended'
+    : 'High incident frequency — immediate driver review advised';
+
+  const circumference = 2 * Math.PI * 48;
+  const rate = vehicleCount > 0 ? ((totalIncidents / vehicleCount) * 100).toFixed(1) : '—';
+
+  return (
+    <div className="bpl-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--cd-text-muted)' }}>
+        Fleet Safety Score
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+        {/* Ring */}
+        <div style={{ position: 'relative', width: 112, height: 112, flexShrink: 0 }}>
+          <svg width="112" height="112" viewBox="0 0 112 112" style={{ transform: 'rotate(-90deg)' }}>
+            <circle cx="56" cy="56" r="48" fill="none" stroke="var(--cd-border)" strokeWidth="8" />
+            <circle
+              cx="56" cy="56" r="48" fill="none"
+              stroke={color} strokeWidth="8"
+              strokeDasharray={circumference}
+              strokeDashoffset={circumference * (1 - score / 100)}
+              strokeLinecap="round"
+              style={{ transition: 'stroke-dashoffset 0.8s ease' }}
+            />
+          </svg>
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ fontSize: 28, fontWeight: 700, color, fontFamily: 'var(--cd-font-display)', lineHeight: 1 }}>{score}</span>
+            <span style={{ fontSize: 10, color: 'var(--cd-text-muted)', fontWeight: 600 }}>/100</span>
+          </div>
+        </div>
+
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 20, fontWeight: 700, color, fontFamily: 'var(--cd-font-display)', lineHeight: 1, marginBottom: 4 }}>{label}</div>
+          <div style={{ fontSize: 12, color: 'var(--cd-text-muted)', marginBottom: 12, lineHeight: 1.5 }}>{sublabel}</div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, marginBottom: 14 }}>
+            {delta > 0
+              ? <><TrendingUp size={13} color="#16a34a" /><span style={{ color: '#16a34a', fontWeight: 600 }}>+{delta} pts vs last month</span></>
+              : delta < 0
+              ? <><TrendingDown size={13} color="#CC0000" /><span style={{ color: '#CC0000', fontWeight: 600 }}>{delta} pts vs last month</span></>
+              : <><Minus size={13} color="var(--cd-text-muted)" /><span style={{ color: 'var(--cd-text-muted)' }}>No change vs last month</span></>
+            }
+          </div>
+
+          <div style={{ display: 'flex', gap: 20 }}>
+            {[
+              { value: totalIncidents, label: 'incidents / 30d' },
+              { value: `${rate}`, label: 'per 100 vehicles' },
+            ].map(m => (
+              <div key={m.label}>
+                <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--cd-text)', fontFamily: 'var(--cd-font-display)', lineHeight: 1 }}>{m.value}</div>
+                <div style={{ fontSize: 10, color: 'var(--cd-text-muted)', marginTop: 2 }}>{m.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Score formula */}
+      <div style={{
+        borderTop: '1px solid var(--cd-border)',
+        paddingTop: 14,
+        display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8,
+      }}>
+        {[
+          { label: 'Panic Alert', weight: 5, color: '#CC0000' },
+          { label: 'Harsh Braking', weight: 2, color: '#e05c2a' },
+          { label: 'Overspeeding', weight: 1.5, color: '#d97706' },
+          { label: 'Harsh Accel.', weight: 1.5, color: '#f59e0b' },
+          { label: 'Cornering', weight: 1, color: '#8b5cf6' },
+        ].map(w => (
+          <div key={w.label} style={{
+            background: `${w.color}12`, border: `1px solid ${w.color}30`,
+            borderRadius: 6, padding: '6px 8px', textAlign: 'center',
+          }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: w.color, fontFamily: 'var(--cd-font-display)' }}>−{w.weight}</div>
+            <div style={{ fontSize: 9, color: 'var(--cd-text-muted)', marginTop: 2, lineHeight: 1.3 }}>{w.label}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ fontSize: 10, color: 'var(--cd-text-muted)', marginTop: -8 }}>
+        Score = 100 − (weighted deductions × fleet size factor). Deductions scale relative to a 50-vehicle reference fleet.
+      </div>
+    </div>
+  );
+}
+
+// ─── IncidentBreakdown (bar chart) ───────────────────────────────────────────
+function IncidentBreakdown({ events }: { events: LogEntry[] }) {
+  const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const recent = events.filter(e => new Date(e.eventTime || e.timestamp).getTime() >= thirtyDaysAgo && !HIDDEN.includes(e.label || ''));
+
+  const data = [
+    { name: 'Harsh Braking', count: recent.filter(e => e.label === 'Harsh Braking').length, color: '#e05c2a', weight: 2 },
+    { name: 'Overspeeding', count: recent.filter(e => e.label === 'Overspeeding' || e.label === 'Overspeed Tiered').length, color: '#d97706', weight: 1.5 },
+    { name: 'Harsh Accel.', count: recent.filter(e => e.label === 'Harsh Acceleration').length, color: '#f59e0b', weight: 1.5 },
+    { name: 'Cornering', count: recent.filter(e => e.label === 'Harsh Cornering').length, color: '#8b5cf6', weight: 1 },
+    { name: 'Panic', count: recent.filter(e => e.type === 'panic').length, color: '#CC0000', weight: 5 },
+  ].sort((a, b) => b.count - a.count);
+
+  const totalDeduction = data.reduce((acc, d) => acc + d.count * d.weight, 0);
+
+  return (
+    <div className="bpl-card" style={{ padding: '20px 22px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--cd-text-muted)', marginBottom: 2 }}>Incident Breakdown</div>
+          <div style={{ fontSize: 11, color: 'var(--cd-text-muted)' }}>Last 30 days · weighted deduction total: <strong style={{ color: 'var(--cd-text)' }}>{totalDeduction.toFixed(0)}</strong></div>
+        </div>
+      </div>
+      <ResponsiveContainer width="100%" height={160}>
+        <BarChart data={data} barSize={28} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--cd-border)" vertical={false} />
+          <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'var(--cd-text-muted)' }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fontSize: 10, fill: 'var(--cd-text-muted)' }} axisLine={false} tickLine={false} />
+          <Tooltip
+            contentStyle={{ background: 'var(--cd-surface)', border: '1px solid var(--cd-border)', borderRadius: 6, fontSize: 12 }}
+            formatter={(value: number, name: string, props: any) => [`${value} incidents (−${(value * props.payload.weight).toFixed(0)} pts)`, 'Count']}
+          />
+          <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+            {data.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+// ─── WorstPerformers ─────────────────────────────────────────────────────────
+function WorstPerformers({ events, vehicleCount }: { events: LogEntry[]; vehicleCount: number }) {
+  const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+
+  const driverMap = useMemo(() => {
+    const map: Record<string, {
+      name: string; incidents: number; riskScore: number;
+      types: Record<string, number>; hasPanic: boolean; lastEvent: string;
+    }> = {};
+
+    events.forEach(e => {
+      const name = e.driverName;
+      if (!name || name === 'N/A' || name === 'Unknown' || name === 'N/A (N/A)') return;
+      if (HIDDEN.includes(e.label || '')) return;
+      const ts = new Date(e.eventTime || e.timestamp).getTime();
+      if (ts < thirtyDaysAgo) return;
+
+      if (!map[name]) map[name] = { name, incidents: 0, riskScore: 0, types: {}, hasPanic: false, lastEvent: '' };
+      map[name].incidents++;
+      map[name].riskScore += eventWeight(e);
+      const lbl = e.type === 'panic' ? 'Panic' : (e.label || 'Unknown');
+      map[name].types[lbl] = (map[name].types[lbl] || 0) + 1;
+      if (e.type === 'panic') map[name].hasPanic = true;
+      const t = e.eventTime || e.timestamp;
+      if (!map[name].lastEvent || t > map[name].lastEvent) map[name].lastEvent = t;
+    });
+
+    return Object.values(map)
+      .sort((a, b) => b.riskScore - a.riskScore)
+      .slice(0, 10);
+  }, [events]);
+
+  const maxRisk = Math.max(...driverMap.map(d => d.riskScore), 1);
+
+  const riskTier = (score: number): { label: string; color: string } => {
+    const pct = score / maxRisk;
+    if (pct >= 0.75) return { label: 'Critical', color: '#CC0000' };
+    if (pct >= 0.5) return { label: 'High', color: '#e05c2a' };
+    if (pct >= 0.25) return { label: 'Medium', color: '#d97706' };
+    return { label: 'Low', color: '#16a34a' };
+  };
+
+  return (
+    <div className="bpl-card">
+      <div className="bpl-card-header">
+        <span className="bpl-card-title">Worst Performing Drivers</span>
+        <span style={{ fontSize: 11, color: 'var(--cd-text-muted)' }}>Ranked by weighted risk · last 30 days</span>
+      </div>
+
+      {driverMap.length === 0 ? (
+        <div style={{ padding: '32px', textAlign: 'center', color: 'var(--cd-text-muted)', fontSize: 13 }}>
+          No driver incident data for this period
+        </div>
+      ) : (
+        <div>
+          {/* Header row */}
+          <div style={{
+            display: 'grid', gridTemplateColumns: '28px 1fr 100px 80px 120px 110px',
+            padding: '7px 20px', borderBottom: '1px solid var(--cd-border)',
+            fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--cd-text-muted)',
+          }}>
+            <span>#</span>
+            <span>Driver</span>
+            <span>Risk Score</span>
+            <span>Incidents</span>
+            <span>Top Offence</span>
+            <span>Last Event</span>
+          </div>
+
+          {driverMap.map((d, i) => {
+            const tier = riskTier(d.riskScore);
+            const topType = Object.entries(d.types).sort(([, a], [, b]) => b - a)[0];
+            const lastFmt = d.lastEvent
+              ? new Date(d.lastEvent).toLocaleString('en-GB', { timeZone: 'Africa/Lagos', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+              : '—';
+
+            return (
+              <div key={d.name} style={{
+                display: 'grid', gridTemplateColumns: '28px 1fr 100px 80px 120px 110px',
+                padding: '11px 20px',
+                borderBottom: i < driverMap.length - 1 ? '1px solid var(--cd-border)' : 'none',
+                alignItems: 'center',
+                background: d.hasPanic ? 'rgba(204,0,0,0.03)' : 'transparent',
+              }}>
+                <span style={{ fontSize: 11, color: 'var(--cd-text-muted)', fontWeight: 600 }}>{i + 1}</span>
+
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--cd-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {d.name}
+                    {d.hasPanic && <AlertTriangle size={11} color="#CC0000" />}
+                  </div>
+                  <div style={{ fontSize: 10, color: 'var(--cd-text-muted)', marginTop: 1 }}>
+                    {Object.entries(d.types).map(([t, c]) => `${t} ×${c}`).join(' · ')}
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ flex: 1, height: 4, background: 'var(--cd-border)', borderRadius: 99, overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%', width: `${(d.riskScore / maxRisk) * 100}%`,
+                        background: tier.color, borderRadius: 99,
+                        transition: 'width 0.4s ease',
+                      }} />
+                    </div>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: tier.color, minWidth: 22, textAlign: 'right' }}>{d.riskScore.toFixed(0)}</span>
+                  </div>
+                  <span style={{
+                    fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em',
+                    color: tier.color, marginTop: 3, display: 'block',
+                  }}>{tier.label}</span>
+                </div>
+
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--cd-text)', fontFamily: 'var(--cd-font-display)' }}>{d.incidents}</span>
+
+                <div>
+                  {topType && (
+                    <span style={{
+                      fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 4,
+                      background: 'var(--cd-border)', color: 'var(--cd-text)',
+                    }}>{topType[0]} ×{topType[1]}</span>
+                  )}
+                </div>
+
+                <span style={{ fontSize: 11, color: 'var(--cd-text-muted)' }}>{lastFmt}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── RadarCard ───────────────────────────────────────────────────────────────
+function SafetyRadar({ events }: { events: LogEntry[] }) {
+  const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const recent = events.filter(e => new Date(e.eventTime || e.timestamp).getTime() >= thirtyDaysAgo);
+  const total = Math.max(recent.length, 1);
+
+  const data = [
+    { subject: 'Braking', value: Math.round((1 - recent.filter(e => e.label === 'Harsh Braking').length / total) * 100) },
+    { subject: 'Speed', value: Math.round((1 - recent.filter(e => e.label?.includes('Overspeed')).length / total) * 100) },
+    { subject: 'Acceleration', value: Math.round((1 - recent.filter(e => e.label === 'Harsh Acceleration').length / total) * 100) },
+    { subject: 'Cornering', value: Math.round((1 - recent.filter(e => e.label === 'Harsh Cornering').length / total) * 100) },
+    { subject: 'Panic-Free', value: Math.round((1 - recent.filter(e => e.type === 'panic').length / total) * 100) },
+  ];
+
+  return (
+    <div className="bpl-card" style={{ padding: '20px 22px' }}>
+      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--cd-text-muted)', marginBottom: 16 }}>
+        Behaviour Profile
+      </div>
+      <ResponsiveContainer width="100%" height={180}>
+        <RadarChart data={data} margin={{ top: 0, right: 20, bottom: 0, left: 20 }}>
+          <PolarGrid stroke="var(--cd-border)" />
+          <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fill: 'var(--cd-text-muted)' }} />
+          <Radar dataKey="value" stroke="#0078D4" fill="#0078D4" fillOpacity={0.18} strokeWidth={2} />
+        </RadarChart>
+      </ResponsiveContainer>
+      <div style={{ fontSize: 10, color: 'var(--cd-text-muted)', textAlign: 'center', marginTop: -4 }}>
+        Higher = cleaner · based on incident distribution (last 30d)
+      </div>
+    </div>
+  );
+}
+
+// ─── Priority Actions ────────────────────────────────────────────────────────
+function PriorityActions({ events, score, vehicleCount }: { events: LogEntry[]; score: number; vehicleCount: number }) {
+  const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const recent = events.filter(e =>
+    new Date(e.eventTime || e.timestamp).getTime() >= thirtyDaysAgo && !HIDDEN.includes(e.label || '')
+  );
+
+  const actions = useMemo(() => {
+    const list: { priority: 'critical' | 'high' | 'medium'; title: string; detail: string; icon: React.ElementType }[] = [];
+
+    const panicDrivers = [...new Set(recent.filter(e => e.type === 'panic').map(e => e.driverName).filter(Boolean))];
+    if (panicDrivers.length > 0) {
+      list.push({
+        priority: 'critical',
+        title: `${panicDrivers.length} driver${panicDrivers.length > 1 ? 's' : ''} triggered panic alerts`,
+        detail: `Immediate supervisor review required: ${panicDrivers.slice(0, 3).join(', ')}${panicDrivers.length > 3 ? ` +${panicDrivers.length - 3} more` : ''}`,
+        icon: AlertTriangle,
+      });
+    }
+
+    const brakingCount = recent.filter(e => e.label === 'Harsh Braking').length;
+    if (brakingCount > 10) {
+      const topBraker = Object.entries(
+        recent.filter(e => e.label === 'Harsh Braking').reduce((acc, e) => {
+          const n = e.driverName || 'Unknown';
+          acc[n] = (acc[n] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>)
+      ).sort(([, a], [, b]) => b - a)[0];
+      list.push({
+        priority: 'high',
+        title: `${brakingCount} harsh braking events — highest-weight offence`,
+        detail: topBraker ? `Worst offender: ${topBraker[0]} (${topBraker[1]} events). Schedule following-distance and anticipation coaching.` : 'Schedule fleet-wide defensive driving refresher.',
+        icon: ShieldAlert,
+      });
+    }
+
+    const speedCount = recent.filter(e => e.label === 'Overspeeding' || e.label === 'Overspeed Tiered').length;
+    if (speedCount > 5) {
+      list.push({
+        priority: 'high',
+        title: `${speedCount} speeding events recorded`,
+        detail: 'Review vehicle speed limiter configuration and enforce zero-tolerance speed policy per FRSC guidelines.',
+        icon: Zap,
+      });
+    }
+
+    const accelCount = recent.filter(e => e.label === 'Harsh Acceleration').length;
+    if (accelCount > 8) {
+      list.push({
+        priority: 'medium',
+        title: `${accelCount} harsh acceleration events`,
+        detail: 'Often indicates schedule pressure. Review route timing and delivery windows to reduce driver urgency.',
+        icon: Activity,
+      });
+    }
+
+    const repeatDrivers = Object.entries(
+      recent.reduce((acc, e) => {
+        const n = e.driverName;
+        if (!n || n === 'N/A' || n === 'Unknown') return acc;
+        acc[n] = (acc[n] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>)
+    ).filter(([, c]) => c >= 5);
+
+    if (repeatDrivers.length > 0) {
+      list.push({
+        priority: 'medium',
+        title: `${repeatDrivers.length} repeat offenders (5+ incidents each)`,
+        detail: `${repeatDrivers.slice(0, 3).map(([n, c]) => `${n} (${c})`).join(', ')} — enrol in targeted behaviour coaching programme.`,
+        icon: Users,
+      });
+    }
+
+    if (score < 60 && vehicleCount > 0) {
+      list.push({
+        priority: 'medium',
+        title: 'Fleet score below acceptable threshold',
+        detail: 'Consider a toolbox talk on the scoring system so drivers understand how their behaviour affects the fleet rating.',
+        icon: Target,
+      });
+    }
+
+    return list.slice(0, 6);
+  }, [recent, score, vehicleCount]);
+
+  const priorityStyle = (p: string) => {
+    if (p === 'critical') return { bg: 'rgba(204,0,0,0.06)', border: 'rgba(204,0,0,0.25)', dot: '#CC0000', label: 'Critical' };
+    if (p === 'high') return { bg: 'rgba(224,92,42,0.06)', border: 'rgba(224,92,42,0.25)', dot: '#e05c2a', label: 'High' };
+    return { bg: 'rgba(217,119,6,0.06)', border: 'rgba(217,119,6,0.25)', dot: '#d97706', label: 'Medium' };
+  };
+
+  return (
+    <div className="bpl-card">
+      <div className="bpl-card-header">
+        <span className="bpl-card-title">Priority Actions</span>
+        <span style={{ fontSize: 11, color: 'var(--cd-text-muted)' }}>Auto-generated from incident data</span>
+      </div>
+
+      {actions.length === 0 ? (
+        <div style={{ padding: '32px', textAlign: 'center' }}>
+          <ShieldCheck size={28} strokeWidth={1.5} style={{ color: '#16a34a', marginBottom: 10 }} />
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--cd-text)' }}>No critical actions flagged</div>
+          <div style={{ fontSize: 12, color: 'var(--cd-text-muted)', marginTop: 4 }}>Fleet behaviour is within acceptable parameters</div>
+        </div>
+      ) : (
+        <div>
+          {actions.map((a, i) => {
+            const s = priorityStyle(a.priority);
+            const Icon = a.icon;
+            return (
+              <div key={i} style={{
+                display: 'flex', gap: 14, padding: '14px 20px',
+                borderBottom: i < actions.length - 1 ? '1px solid var(--cd-border)' : 'none',
+                background: s.bg,
+                borderLeft: `3px solid ${s.dot}`,
+              }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                  background: `${s.dot}18`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Icon size={15} color={s.dot} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                    <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: s.dot }}>{s.label}</span>
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--cd-text)', marginBottom: 3 }}>{a.title}</div>
+                  <div style={{ fontSize: 11, color: 'var(--cd-text-muted)', lineHeight: 1.5 }}>{a.detail}</div>
+                </div>
+                <ArrowRight size={14} style={{ color: 'var(--cd-text-muted)', flexShrink: 0, marginTop: 2 }} />
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── KPI strip ───────────────────────────────────────────────────────────────
+function KpiStrip({ events, vehicleCount }: { events: LogEntry[]; vehicleCount: number }) {
+  const now = Date.now();
+  const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
+  const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+
+  const recent30 = events.filter(e => !HIDDEN.includes(e.label || '') && new Date(e.eventTime || e.timestamp).getTime() >= thirtyDaysAgo);
+  const recent7 = events.filter(e => !HIDDEN.includes(e.label || '') && new Date(e.eventTime || e.timestamp).getTime() >= sevenDaysAgo);
+  const panicCount = recent30.filter(e => e.type === 'panic').length;
+  const affectedVehicles = new Set(recent30.map(e => e.assetId)).size;
+  const cleanVehicles = vehicleCount - affectedVehicles;
+
+  const kpis = [
+    { label: 'Incidents (30d)', value: recent30.length, sub: `${recent7.length} this week`, color: '#0078D4', icon: Activity },
+    { label: 'Panic Alerts (30d)', value: panicCount, sub: panicCount > 0 ? 'Immediate review needed' : 'None recorded', color: panicCount > 0 ? '#CC0000' : '#16a34a', icon: AlertTriangle },
+    { label: 'Vehicles with Incidents', value: affectedVehicles, sub: `${vehicleCount > 0 ? Math.round((affectedVehicles / vehicleCount) * 100) : 0}% of fleet`, color: '#e05c2a', icon: Shield },
+    { label: 'Clean Vehicles', value: cleanVehicles >= 0 ? cleanVehicles : '—', sub: 'Zero incidents (30d)', color: '#16a34a', icon: ShieldCheck },
+  ];
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
+      {kpis.map(k => {
+        const Icon = k.icon;
+        return (
+          <div key={k.label} className="bpl-card" style={{ padding: '16px 18px', borderTop: `3px solid ${k.color}` }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--cd-text-muted)' }}>{k.label}</span>
+              <Icon size={13} style={{ color: k.color, opacity: 0.7 }} />
+            </div>
+            <div style={{ fontSize: 26, fontWeight: 700, color: k.color, lineHeight: 1, fontFamily: 'var(--cd-font-display)', marginBottom: 4 }}>{k.value}</div>
+            <div style={{ fontSize: 10, color: 'var(--cd-text-muted)' }}>{k.sub}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Page ────────────────────────────────────────────────────────────────────
+export default function Safety() {
+  const { events, vehicles, fleetSafetyScore, fleetScoreDelta } = useFleet();
+
+  const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const totalIncidents = events.filter(e =>
+    !HIDDEN.includes(e.label || '') && new Date(e.eventTime || e.timestamp).getTime() >= thirtyDaysAgo
+  ).length;
+
+  return (
+    <div>
+      <div className="bpl-page-header">
+        <h1 className="bpl-page-title">Safety</h1>
+        <p className="bpl-page-subtitle">Fleet-wide safety performance · Lafarge Nigeria</p>
+      </div>
+
+      {/* KPI strip */}
+      <KpiStrip events={events} vehicleCount={vehicles.length} />
+
+      {/* Score + Breakdown + Radar */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 260px', gap: 14, marginBottom: 20 }}>
+        <ScoreGauge
+          score={fleetSafetyScore}
+          delta={fleetScoreDelta}
+          totalIncidents={totalIncidents}
+          vehicleCount={vehicles.length}
+        />
+        <IncidentBreakdown events={events} />
+        <SafetyRadar events={events} />
+      </div>
+
+      {/* Worst performers */}
+      <div style={{ marginBottom: 20 }}>
+        <WorstPerformers events={events} vehicleCount={vehicles.length} />
+      </div>
+
+      {/* Priority actions */}
+      <PriorityActions events={events} score={fleetSafetyScore} vehicleCount={vehicles.length} />
+    </div>
+  );
+}

@@ -3,11 +3,10 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, User, GraduationCap, Award, BadgeCheck,
   AlertTriangle, Search, ScatterChart, ListChecks,
-  Lock, FileText, Wrench, MessageSquare, History,
+  Shield, FileText, Wrench, MessageSquare, History,
   FileBarChart2, Calendar, BarChart3, Target, Folder,
-  Truck, Percent, Clock, DollarSign,
+  Truck, Percent, Clock, DollarSign, Fuel,
   Settings, ChevronDown, Sun, Moon, LogOut,
-  ShieldAlert, ClipboardList,
 } from 'lucide-react';
 import { useFleet } from '../../context/FleetContext';
 
@@ -44,17 +43,8 @@ const NAV: NavGroup[] = [
       { path: '/incidents/response', label: 'Response Tracking', icon: ListChecks },
     ],
   },
-  {
-    path: '/vault', icon: Lock, label: 'Safety Vault',
-    children: [
-      { path: '/vault', label: 'Incident Records', icon: FileText },
-      { path: '/vault/safeiq', label: 'SafeIQ Analysis', icon: ShieldAlert },
-      { path: '/vault/investigations', label: 'Investigations', icon: Search },
-      { path: '/vault/actions', label: 'Corrective Actions', icon: Wrench },
-      { path: '/vault/acknowledgements', label: 'Acknowledgements', icon: MessageSquare },
-      { path: '/vault/audit', label: 'Audit Trail', icon: History },
-    ],
-  },
+  { path: '/safety', icon: Shield, label: 'Safety' },
+  { path: '/operations/fuel', icon: Fuel, label: 'Fuel Monitoring' },
   {
     path: '/reports', icon: FileBarChart2, label: 'Reports & Reviews',
     children: [
@@ -114,7 +104,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: Props) {
     return false;
   };
 
-  const scoreColor = fleetSafetyScore >= 80 ? '#33d38d' : fleetSafetyScore >= 60 ? '#f5b453' : '#ff6b6b';
+  const scoreColor = fleetSafetyScore >= 80 ? '#33d38d' : fleetSafetyScore >= 60 ? '#f5b453' : fleetSafetyScore >= 45 ? '#e05c2a' : '#ff6b6b';
 
   return (
     <aside className={`bpl-sidebar${mobileOpen ? ' mobile-open' : ''}`}

@@ -251,7 +251,8 @@ export default function FleetAnomalies({ statusFilter, onFilterChange, authFetch
       anomaly.regNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       anomaly.assetName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       anomaly.transporter.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'All' || anomaly.status === statusFilter;
+    const matchesStatus = statusFilter === 'All' || anomaly.status === statusFilter
+      || (statusFilter === 'Inactive' && anomaly.status === 'Offline');
     return matchesSearch && matchesStatus;
   });
 

@@ -4,7 +4,7 @@ import AppShell from './components/layout/AppShell';
 import Dashboard from './pages/Dashboard';
 import DriverManagement from './pages/DriverManagement';
 import IncidentIntelligence from './pages/IncidentIntelligence';
-import SafetyVault from './pages/SafetyVault';
+import Safety from './pages/Safety';
 import ReportsReviews from './pages/ReportsReviews';
 import Operations from './pages/Operations';
 import Settings from './pages/Settings';
@@ -30,13 +30,8 @@ export default function App() {
             <Route path="/incidents/analysis" element={<IncidentIntelligence tab="by-driver" />} />
             <Route path="/incidents/response" element={<IncidentIntelligence tab="patterns" />} />
 
-            {/* Safety Vault */}
-            <Route path="/vault" element={<SafetyVault tab="records" />} />
-            <Route path="/vault/safeiq" element={<SafetyVault tab="safeiq" />} />
-            <Route path="/vault/investigations" element={<SafetyVault tab="investigations" />} />
-            <Route path="/vault/actions" element={<SafetyVault tab="actions" />} />
-            <Route path="/vault/acknowledgements" element={<SafetyVault tab="acknowledgements" />} />
-            <Route path="/vault/audit" element={<SafetyVault tab="audit" />} />
+            {/* Safety */}
+            <Route path="/safety" element={<Safety />} />
 
 
             {/* Reports & Reviews */}
@@ -52,6 +47,7 @@ export default function App() {
             <Route path="/operations/utilization" element={<Operations tab="utilization" />} />
             <Route path="/operations/productivity" element={<Operations tab="productivity" />} />
             <Route path="/operations/economics" element={<Operations tab="economics" />} />
+            <Route path="/operations/fuel" element={<Operations tab="fuel" />} />
 
             {/* Maintenance */}
             <Route path="/maintenance" element={<Maintenance />} />

@@ -177,7 +177,8 @@ export default function MapView({ authFetch, statusFilter, onAcknowledge }: Prop
 
     const filtered = vehicles.filter(v => {
       if (!v.position?.latitude || !v.position?.longitude) return false;
-      const matchesStatus = statusFilter === 'All' || v.status === statusFilter;
+      const matchesStatus = statusFilter === 'All' || v.status === statusFilter
+        || (statusFilter === 'Inactive' && v.status === 'Offline');
       const matchesSearch = searchTerm === '' ||
         v.regNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
         v.assetName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -266,7 +267,8 @@ export default function MapView({ authFetch, statusFilter, onAcknowledge }: Prop
 
   const visibleCount = vehicles.filter(v => {
     if (!v.position?.latitude) return false;
-    const matchesStatus = statusFilter === 'All' || v.status === statusFilter;
+    const matchesStatus = statusFilter === 'All' || v.status === statusFilter
+      || (statusFilter === 'Inactive' && v.status === 'Offline');
     const matchesSearch = searchTerm === '' ||
       v.regNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       v.assetName.toLowerCase().includes(searchTerm.toLowerCase());

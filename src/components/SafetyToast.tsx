@@ -1,10 +1,12 @@
 import { useEffect, useRef } from 'react';
 import type { SafetyNotification, Severity } from '../hooks/useSafeIQ';
+import { formatEnvironmentLine } from './EnvironmentBadge';
 
 interface Props {
   notifications: SafetyNotification[];
   onDismiss: (id: string) => void;
   onOpen: (n: SafetyNotification) => void;
+  onClearAll: () => void;
 }
 
 function severityColor(s: Severity) {
@@ -154,9 +156,18 @@ function ToastCard({ n, onDismiss, onOpen }: ToastCardProps) {
         </div>
 
         {/* Third row — location */}
-        <div style={{ padding: '0 14px 4px', fontSize: '12px', color: 'var(--cd-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {n.location}
-        </div>
+        {n.location && (
+          <div style={{ padding: '0 14px 4px', fontSize: '12px', color: 'var(--cd-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {n.location}
+          </div>
+        )}
+
+        {/* Environment row */}
+        {n.environment.weather !== 'Loading…' && (
+          <div style={{ padding: '0 14px 6px', fontSize: '11px', color: 'var(--cd-text-muted)' }}>
+            {formatEnvironmentLine(n.environment)}
+          </div>
+        )}
 
         {/* Fourth row — severity reason */}
         {n.analysis && (
@@ -178,11 +189,31 @@ function ToastCard({ n, onDismiss, onOpen }: ToastCardProps) {
   );
 }
 
-export default function SafetyToast({ notifications, onDismiss, onOpen }: Props) {
+export default function SafetyToast({ notifications, onDismiss, onOpen, onClearAll }: Props) {
   if (notifications.length === 0) return null;
 
   return (
     <div style={{ position: 'fixed', top: '66px', right: '24px', zIndex: 2000, display: 'flex', flexDirection: 'column', gap: '10px', width: '360px', maxHeight: 'calc(100vh - 160px)', overflowY: 'auto' }}>
+      {notifications.length >= 2 && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button
+            onClick={onClearAll}
+            style={{
+              fontSize: 11, fontWeight: 600,
+              color: 'rgba(255,255,255,0.55)',
+              background: 'rgba(15,25,40,0.85)',
+              border: '0.5px solid rgba(255,255,255,0.14)',
+              borderRadius: 7, padding: '4px 12px',
+              cursor: 'pointer', backdropFilter: 'blur(8px)',
+              transition: 'background 0.15s, color 0.15s',
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(204,0,0,0.35)'; (e.currentTarget as HTMLElement).style.color = '#fff'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(15,25,40,0.85)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.55)'; }}
+          >
+            Clear all ({notifications.length})
+          </button>
+        </div>
+      )}
       {notifications.map(n => (
         <ToastCard key={n.id} n={n} onDismiss={onDismiss} onOpen={onOpen} />
       ))}
