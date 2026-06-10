@@ -6,30 +6,9 @@ on:
       - main
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build
-        run: npm run build
-        env:
-          VITE_API_SECRET: ${{ secrets.VITE_API_SECRET }}
-          VITE_ANTHROPIC_API_KEY: ${{ secrets.VITE_ANTHROPIC_API_KEY }}
-          VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
-          VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
-
       - name: Deploy to DigitalOcean
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -41,7 +20,7 @@ jobs:
             set -e
             cd ${{ secrets.APP_DIR }}
             git pull origin main
-            npm ci --omit=dev
+            npm install
             npm run build
             pm2 restart ${{ secrets.PM2_APP_NAME }} --update-env
             pm2 save
