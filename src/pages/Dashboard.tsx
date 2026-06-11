@@ -258,7 +258,7 @@ export default function Dashboard() {
       {/* Page header */}
       <div className="bpl-page-header">
         <h1 className="bpl-page-title">Fleet Overview</h1>
-        <p className="bpl-page-subtitle">Lafarge Nigeria — Real-time fleet intelligence</p>
+        <p className="bpl-page-subtitle">Lafarge Africa — Real-time fleet intelligence</p>
       </div>
 
       {/* Top row: score + stats */}

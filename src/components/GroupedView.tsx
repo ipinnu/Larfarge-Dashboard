@@ -38,12 +38,12 @@ const GROUP_COLORS: Record<string, string> = {
 
 function getGroup(zone: string): string {
   const z = (zone || '').toUpperCase();
-  if (/QUARRY|LH QUARRY/.test(z))            return 'LH Quarry';
-  if (/INBOUND/.test(z))                      return 'Inbound';
-  if (/READY.?MIX|RDYMIX/.test(z))           return 'Ready Mix';
-  if (/CUSTOMER|DEPOT|AJAH|OREGUN/.test(z))  return 'LH Customer Assets';
-  if (/CEMENT|DD WEST|DD EAST/.test(z))       return 'Cement';
-  if (/ALTERNATIVE|ALT/.test(z))              return 'Alternative';
+  if (/QUARRY/.test(z))                                                          return 'LH Quarry';
+  if (/INBOUND/.test(z))                                                         return 'Inbound';
+  if (/READY.?MIX|RDYMIX/.test(z))                                              return 'Ready Mix';
+  if (/DEPOT|CUSTOMER|AJAH|OREGUN|\bADO\b|\bAKURE\b|\bISEYIN\b/.test(z))       return 'LH Customer Assets';
+  if (/CEMENT|LH\s*-\s*(NORTH|EAST|WEST)|\bMDD\b|\bDD\b|SPOT.?HIRE|BULK.?TANKER/.test(z)) return 'Cement';
+  if (/ALTERNATIVE|ALT/.test(z))                                                return 'Alternative';
   return 'Other';
 }
 
