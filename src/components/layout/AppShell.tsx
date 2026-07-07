@@ -8,10 +8,15 @@ import SafetyIncidentModal from '../SafetyIncidentModal';
 import { useFleet } from '../../context/FleetContext';
 import type { SafetyNotification } from '../../hooks/useSafeIQ';
 import EnvironmentBadge from '../EnvironmentBadge';
+import { isKnownDriver } from '../../lib/driverUtils';
 
 function getPageTitle(pathname: string): { title: string; sub: string } {
   const map: Record<string, { title: string; sub: string }> = {
     '/': { title: 'Dashboard', sub: '— real-time fleet overview' },
+    '/fleet': { title: 'Fleet', sub: '— live asset list' },
+    '/trips': { title: 'Trips', sub: '— ongoing and completed journeys' },
+    '/trips/dispatch': { title: 'Trips', sub: '— dispatch & journey planning' },
+    '/aria': { title: 'AI Insights', sub: '— SafeIQ analyses' },
     '/drivers': { title: 'Driver Management', sub: '— profiles and safety scores' },
     '/drivers/coaching': { title: 'Driver Management', sub: '— coaching history' },
     '/drivers/training': { title: 'Driver Management', sub: '— training records' },
@@ -25,15 +30,9 @@ function getPageTitle(pathname: string): { title: string; sub: string } {
     '/vault/actions': { title: 'Safety Vault', sub: '— corrective actions' },
     '/vault/acknowledgements': { title: 'Safety Vault', sub: '— acknowledgements' },
     '/vault/audit': { title: 'Safety Vault', sub: '— audit trail' },
-    '/reports/weekly': { title: 'Reports & Reviews', sub: '— weekly report' },
-    '/reports/monthly': { title: 'Reports & Reviews', sub: '— monthly report' },
-    '/reports/quarterly': { title: 'Reports & Reviews', sub: '— quarterly review' },
-    '/reports/actions': { title: 'Reports & Reviews', sub: '— action tracking' },
-    '/reports/documents': { title: 'Reports & Reviews', sub: '— documents' },
-    '/operations/utilization': { title: 'Operations', sub: '— utilization' },
-    '/operations/productivity': { title: 'Operations', sub: '— productivity' },
-    '/operations/economics': { title: 'Operations', sub: '— asset economics' },
-    '/operations/fuel': { title: 'Operations', sub: '— fuel monitoring' },
+    '/tankers': { title: 'Bulk Tankers', sub: '— East & West zone fleet' },
+    '/reports': { title: 'Reports', sub: '— event log and trends' },
+    '/reports/documents': { title: 'Documents', sub: '— report repository' },
     '/maintenance': { title: 'Maintenance', sub: '— scheduling & service' },
     '/settings/general': { title: 'Settings', sub: '— general' },
     '/settings/thresholds': { title: 'Settings', sub: '— alert thresholds' },
@@ -56,13 +55,16 @@ function timeAgo(ts: string) {
   return `${Math.floor(diff / 3600)}h ago`;
 }
 
-function NotifPanel({ notifications, onOpen, onDismiss, onClearAll, onClose }: {
+function NotifPanel({ notifications, onOpen, onDismiss, onClearAll, onClose, onViewAll }: {
   notifications: SafetyNotification[];
   onOpen: (n: SafetyNotification) => void;
   onDismiss: (id: string) => void;
   onClearAll: () => void;
   onClose: () => void;
+  onViewAll: () => void;
 }) {
+  const visible = notifications.filter(n => isKnownDriver(n.driver.name));
+
   return (
     <div style={{
       position: 'absolute', top: 40, right: 0, width: 340,
@@ -73,14 +75,14 @@ function NotifPanel({ notifications, onOpen, onDismiss, onClearAll, onClose }: {
       <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>SafeIQ Notifications</span>
-          {notifications.length > 0 && (
+          {visible.length > 0 && (
             <span style={{
               fontSize: 10, fontWeight: 700, background: 'rgba(255,255,255,0.1)',
               color: 'rgba(255,255,255,0.5)', borderRadius: 99, padding: '1px 6px',
-            }}>{notifications.length}</span>
+            }}>{visible.length}</span>
           )}
         </div>
-        {notifications.length > 0 && (
+        {visible.length > 0 && (
           <button
             onClick={() => { onClearAll(); onClose(); }}
             style={{
@@ -97,13 +99,13 @@ function NotifPanel({ notifications, onOpen, onDismiss, onClearAll, onClose }: {
         )}
       </div>
 
-      {notifications.length === 0 ? (
+      {visible.length === 0 ? (
         <div style={{ padding: '32px 16px', textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: 13 }}>
           No notifications yet
         </div>
       ) : (
         <div style={{ maxHeight: 420, overflowY: 'auto' }}>
-          {notifications.map((n, i) => {
+          {visible.map((n, i) => {
             const severity = n.analysis?.severity ?? 'GREEN';
             const accent = severityColor(severity);
             return (
@@ -112,7 +114,7 @@ function NotifPanel({ notifications, onOpen, onDismiss, onClearAll, onClose }: {
                 onClick={() => { onOpen(n); onClose(); }}
                 style={{
                   padding: '12px 16px',
-                  borderBottom: i < notifications.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                  borderBottom: i < visible.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none',
                   cursor: 'pointer', display: 'flex', gap: 10, alignItems: 'flex-start',
                   background: 'transparent', transition: 'background 0.15s',
                 }}
@@ -145,6 +147,21 @@ function NotifPanel({ notifications, onOpen, onDismiss, onClearAll, onClose }: {
           })}
         </div>
       )}
+
+      {visible.length > 0 && (
+        <div style={{ padding: '10px 16px', borderTop: '1px solid rgba(255,255,255,0.08)', textAlign: 'center' }}>
+          <button
+            type="button"
+            onClick={() => { onClose(); onViewAll(); }}
+            style={{
+              fontSize: 12, fontWeight: 600, color: '#60a5fa',
+              background: 'none', border: 'none', cursor: 'pointer',
+            }}
+          >
+            View all in AI Insights →
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -173,7 +190,7 @@ export default function AppShell() {
   }, [notifOpen]);
 
   const { title, sub } = getPageTitle(location.pathname);
-
+  const visibleNotifications = notifications.filter(n => isKnownDriver(n.driver.name));
 
   return (
     <div className="bpl-app">
@@ -245,7 +262,7 @@ export default function AppShell() {
                 title="Notifications"
               >
                 <Bell size={14} />
-                {notifications.length > 0 && (
+                {visibleNotifications.length > 0 && (
                   <span style={{
                     position: 'absolute', top: 4, right: 4,
                     minWidth: 7, height: 7,
@@ -261,6 +278,7 @@ export default function AppShell() {
                   onDismiss={dismissNotification}
                   onClearAll={clearAllNotifications}
                   onClose={() => setNotifOpen(false)}
+                  onViewAll={() => navigate('/aria')}
                 />
               )}
             </div>

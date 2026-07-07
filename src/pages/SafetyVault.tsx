@@ -5,6 +5,7 @@ import type { VaultRecord } from '../context/FleetContext';
 import SafetyIncidentModal from '../components/SafetyIncidentModal';
 import type { SafetyNotification } from '../hooks/useSafeIQ';
 import { formatEnvironmentLine } from '../components/EnvironmentBadge';
+import { isKnownDriver } from '../lib/driverUtils';
 
 type StatusFilter = 'all' | 'open' | 'in_review' | 'resolved';
 type SeverityFilter = 'all' | 'RED' | 'YELLOW' | 'GREEN';
@@ -523,7 +524,9 @@ function SafeIQTab({ notifications, onOpen, onDismiss }: {
   onOpen: (n: SafetyNotification) => void;
   onDismiss: (id: string) => void;
 }) {
-  if (notifications.length === 0) {
+  const visible = notifications.filter(n => isKnownDriver(n.driver.name));
+
+  if (visible.length === 0) {
     return (
       <div className="bpl-card" style={{ padding: '40px', textAlign: 'center', marginTop: 20 }}>
         <ShieldAlert size={36} color="var(--cd-border)" style={{ margin: '0 auto 14px' }} />
@@ -535,7 +538,7 @@ function SafeIQTab({ notifications, onOpen, onDismiss }: {
 
   return (
     <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {notifications.map(n => {
+      {visible.map(n => {
         const severity = n.analysis?.severity ?? 'GREEN';
         const accent = severityColor(severity);
         const trend = n.driver.improvement_trend;
@@ -560,7 +563,7 @@ function SafeIQTab({ notifications, onOpen, onDismiss }: {
                 {severity !== 'GREEN' && (
                   <span style={{
                     fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 9999,
-                    background: severity === 'RED' ? '#fef2f2' : '#fffbeb',
+                    background: severity === 'RED' ? 'var(--cd-danger-bg)' : 'var(--cd-status-idle-bg)',
                     color: accent, border: `1px solid ${accent}40`,
                   }}>{severity}</span>
                 )}
@@ -580,7 +583,11 @@ function SafeIQTab({ notifications, onOpen, onDismiss }: {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: n.analysis ? 14 : 0 }}>
               <div>
                 <div style={{ fontSize: 10, color: 'var(--cd-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Event</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--cd-text)' }}>{n.magnitude}</div>
+                {n.type === 'speeding' && /\d+\s*km\/h/.test(n.magnitude) ? (
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#d97706' }}>{n.magnitude}</div>
+                ) : (
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--cd-text)' }}>{n.magnitude}</div>
+                )}
               </div>
               <div>
                 <div style={{ fontSize: 10, color: 'var(--cd-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Incidents / 30d</div>
@@ -613,8 +620,8 @@ function SafeIQTab({ notifications, onOpen, onDismiss }: {
                   {n.analysis.coaching_recommendation}
                 </div>
                 {n.analysis.ops_flag && (
-                  <div style={{ marginTop: 8, padding: '8px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, fontSize: 12, color: '#991b1b' }}>
-                    ⚠️ <strong>Ops Flag:</strong> {n.analysis.ops_flag_reason}
+                  <div style={{ marginTop: 8, padding: '8px 12px', background: 'var(--cd-danger-bg)', border: '1px solid var(--cd-danger-border)', borderRadius: 8, fontSize: 12, color: 'var(--cd-text)' }}>
+                    <strong style={{ color: 'var(--cd-danger)' }}>Ops Flag:</strong> {n.analysis.ops_flag_reason}
                   </div>
                 )}
               </div>

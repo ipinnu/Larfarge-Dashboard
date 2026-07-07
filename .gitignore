@@ -44,6 +44,8 @@ public/acknowledged.json
 public/drivers.json
 public/vehicles.json
 public/sites.json
+public/trips.log
+public/trips-session.json
 
 # Claude Code memory
 .claude/

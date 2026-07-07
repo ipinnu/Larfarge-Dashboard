@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { SafetyNotification, Severity } from '../hooks/useSafeIQ';
 import { formatEnvironmentLine } from './EnvironmentBadge';
+import { isKnownDriver } from '../lib/driverUtils';
 
 interface Props {
   notifications: SafetyNotification[];
@@ -190,11 +191,12 @@ function ToastCard({ n, onDismiss, onOpen }: ToastCardProps) {
 }
 
 export default function SafetyToast({ notifications, onDismiss, onOpen, onClearAll }: Props) {
-  if (notifications.length === 0) return null;
+  const visible = notifications.filter(n => isKnownDriver(n.driver.name));
+  if (visible.length === 0) return null;
 
   return (
     <div style={{ position: 'fixed', top: '66px', right: '24px', zIndex: 2000, display: 'flex', flexDirection: 'column', gap: '10px', width: '360px', maxHeight: 'calc(100vh - 160px)', overflowY: 'auto' }}>
-      {notifications.length >= 2 && (
+      {visible.length >= 2 && (
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <button
             onClick={onClearAll}
@@ -210,11 +212,11 @@ export default function SafetyToast({ notifications, onDismiss, onOpen, onClearA
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(204,0,0,0.35)'; (e.currentTarget as HTMLElement).style.color = '#fff'; }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(15,25,40,0.85)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.55)'; }}
           >
-            Clear all ({notifications.length})
+            Clear all ({visible.length})
           </button>
         </div>
       )}
-      {notifications.map(n => (
+      {visible.map(n => (
         <ToastCard key={n.id} n={n} onDismiss={onDismiss} onOpen={onOpen} />
       ))}
     </div>

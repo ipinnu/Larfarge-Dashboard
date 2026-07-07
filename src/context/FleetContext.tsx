@@ -1,12 +1,33 @@
-import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { SafetyNotification, SafeIQAnalysis, EnvironmentContext } from '../hooks/useSafeIQ';
 import { fetchIncidentEnvironment } from '../services/environment';
 import { lookupSafetyReference, formatReferenceForPrompt } from '../data/safetyReferences';
+import {
+  type StatusFilter,
+  type AlertItem,
+  type DriverScore,
+  type MaintenanceItem,
+  type FuelDay,
+  type AiInsight,
+  type TripItem,
+  deriveAlerts,
+  deriveDriverScores,
+  deriveInsights,
+  normalizeVehicle,
+  DEFAULT_MAINTENANCE,
+  DEFAULT_FUEL_SERIES,
+  DEMO_TRIPS,
+} from '../lib/homeWidgetData';
+import { isKnownDriver } from '../lib/driverUtils';
+
+export type { StatusFilter, AlertItem, DriverScore, MaintenanceItem, FuelDay, AiInsight, TripItem };
+export type FleetVehicle = ReturnType<typeof normalizeVehicle>;
+export type DistanceRange = '24h' | 'currentMonth' | 'lastMonth';
 
 const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY;
 
 async function generateSafeIQAnalysis(
-  e: { label?: string; type: string; driverName?: string; regNo?: string; assetId: string; address?: string; eventTime: string },
+  e: { label?: string; type: string; driverName?: string; regNo?: string; assetId: string; address?: string; eventTime: string; speed?: number | null; speedLimit?: number | null },
   driverIncidents30Days: number,
   driverTrend: 'improving' | 'stable' | 'declining',
   environment: EnvironmentContext,
@@ -37,6 +58,7 @@ Event:
 - Vehicle: ${vehicle} | Location: ${location} | Time: ${time}
 - Weather: ${environment.weather} | Traffic: ${environment.traffic_description || environment.traffic_density} | Road: ${environment.road_type}
 ${environment.precipitation_mm ? `- Precipitation: ${environment.precipitation_mm}mm` : ''}
+${e.speed != null ? `- Recorded speed: ${Math.round(e.speed)} km/h${e.speedLimit != null ? ` (speed limit: ${Math.round(e.speedLimit)} km/h, excess: ${Math.round(e.speed - e.speedLimit)} km/h)` : ''}` : ''}
 ${safetyReference ? `\nIndustry context (use as soft reference only):\n${safetyReference}` : ''}
 
 Return only valid JSON, no markdown, nothing outside the JSON object.`;
@@ -83,6 +105,7 @@ export interface Metadata {
   parked: number;
   inactive: number;
   offline: number;
+  panic?: number;
   lastUpdate: string;
 }
 
@@ -102,6 +125,8 @@ export interface LogEntry {
   label?: string;
   eventTime: string;
   type: 'panic' | 'warning';
+  speed?: number | null;
+  speedLimit?: number | null;
 }
 
 export interface Vehicle {
@@ -117,6 +142,44 @@ export interface Vehicle {
   panic: boolean;
   warnings?: { label: string; timestamp: string }[];
   position?: { latitude: number; longitude: number; address?: string };
+}
+
+export interface TripAsset {
+  assetId: string;
+  regNo: string;
+  assetName: string;
+  totalDistanceKm: number;
+  rawTripCount: number;
+  journeyCount: number;
+  totalDrivingTimeSeconds: number;
+  avgSpeedKph: number | null;
+  longestJourneyKm: number;
+  drivers: string[];
+}
+
+export interface TripDriver {
+  driverId: string | null;
+  driverName: string;
+  driverPhone: string;
+  totalDistanceKm: number;
+  journeyCount: number;
+  vehicles: string[];
+}
+
+export interface DriverDistanceSummary {
+  generatedAt: string;
+  range: string;
+  month: string | null;
+  start: string;
+  end: string;
+  totalDistanceKm: number;
+  rawTripCount: number;
+  journeyCount: number;
+  driverCount: number;
+  assetCount: number;
+  cachedTripCount: number;
+  assets: TripAsset[];
+  drivers: TripDriver[];
 }
 
 export interface VaultRecord {
@@ -174,10 +237,23 @@ function computeFleetScore(events: LogEntry[], vehicleCount: number): { score: n
 interface FleetContextType {
   authFetch: typeof authFetch;
   metadata: Metadata;
-  vehicles: Vehicle[];
+  vehicles: FleetVehicle[];
   events: LogEntry[];
+  driverDistance: DriverDistanceSummary | null;
   fleetSafetyScore: number;
   fleetScoreDelta: number;
+  safetyScore: number;
+  safetyDelta: number;
+  alerts: AlertItem[];
+  drivers: DriverScore[];
+  maintenance: MaintenanceItem[];
+  fuelSeries: FuelDay[];
+  insights: AiInsight[];
+  trips: TripItem[];
+  distanceRange: DistanceRange;
+  setDistanceRange: (range: DistanceRange) => void;
+  totalDistanceKm: number;
+  environment: { weather: string; traffic: string; temp: string };
   redAlertCount: number;
   notifications: SafetyNotification[];
   dismissNotification: (id: string) => void;
@@ -203,9 +279,13 @@ const FleetContext = createContext<FleetContextType>({} as FleetContextType);
 
 export function FleetProvider({ children }: { children: React.ReactNode }) {
   const [metadata, setMetadata] = useState<Metadata>(defaultMeta);
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const vehiclesRef = useRef<Vehicle[]>([]);
+  const [vehicles, setVehicles] = useState<FleetVehicle[]>([]);
+  const vehiclesRef = useRef<FleetVehicle[]>([]);
   const [events, setEvents] = useState<LogEntry[]>([]);
+  const [driverDistance, setDriverDistance] = useState<DriverDistanceSummary | null>(null);
+  const [distanceRange, setDistanceRange] = useState<DistanceRange>('24h');
+  const [fuelSeries, setFuelSeries] = useState<FuelDay[]>(DEFAULT_FUEL_SERIES);
+  const [environment, setEnvironment] = useState({ weather: 'Loading…', traffic: 'Moderate', temp: '—' });
   const [notifications, setNotifications] = useState<SafetyNotification[]>([]);
   const [selectedNotification, setSelectedNotification] = useState<SafetyNotification | null>(null);
   const [vaultRecords, setVaultRecords] = useState<VaultRecord[]>(() => {
@@ -245,7 +325,9 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await authFetch('/api/data');
       if (res.ok) {
-        const data = (await res.json()).filter((v: Vehicle) => v.site !== 'XN - Decommissioned');
+        const data = (await res.json())
+          .filter((v: Vehicle) => v.site !== 'XN - Decommissioned')
+          .map(normalizeVehicle);
         vehiclesRef.current = data;
         setVehicles(data);
       }
@@ -263,7 +345,8 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
         const SAFEIQ_LABELS = ['Harsh Braking', 'Harsh Acceleration', 'Overspeeding', 'Overspeed Tiered'];
         const newOnes = data.filter(e => {
           if (!e.eventId || seenEventIds.current.has(e.eventId)) return false;
-          const isRelevant = e.type === 'panic' || SAFEIQ_LABELS.includes(e.label || '');
+          const isRelevant = (e.type === 'panic' || SAFEIQ_LABELS.includes(e.label || ''))
+            && isKnownDriver(e.driverName);
           if (!isRelevant) return false;
           const age = Date.now() - new Date(e.eventTime || e.timestamp).getTime();
           return age < 10 * 60 * 1000; // only events in last 10 min
@@ -275,7 +358,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
           // Compute driver stats from the full event set
           const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
           const getDriverStats = (driverName: string | undefined) => {
-            if (!driverName || driverName === 'N/A') return { incidents: 0, trend: 'stable' as const };
+            if (!isKnownDriver(driverName)) return { incidents: 0, trend: 'stable' as const };
             const driverEvents = data.filter(ev =>
               ev.driverName === driverName &&
               new Date(ev.eventTime || ev.timestamp).getTime() >= thirtyDaysAgo
@@ -328,13 +411,22 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
                 id: e.eventId,
                 type: e.label === 'Overspeeding' || e.label === 'Overspeed Tiered' ? 'speeding' :
                   e.label === 'Harsh Acceleration' ? 'harsh_acceleration' : 'harsh_braking',
-                magnitude: e.label || 'Unknown',
+                magnitude: (() => {
+                  const isSpeeding = e.label === 'Overspeeding' || e.label === 'Overspeed Tiered';
+                  if (isSpeeding && e.speed != null) {
+                    const base = `${Math.round(e.speed)} km/h`;
+                    return e.speedLimit != null
+                      ? `${base} (limit ${Math.round(e.speedLimit)} km/h)`
+                      : base;
+                  }
+                  return e.label || 'Unknown';
+                })(),
                 timestamp: e.eventTime || e.timestamp,
                 location: e.address || '',
                 eventCount: stats.incidents,
                 driver: {
                   id: e.assetId,
-                  name: e.driverName || 'Unknown Driver',
+                  name: e.driverName!,
                   safety_score_baseline: scoreBaseline,
                   incidents_last_30_days: stats.incidents,
                   improvement_trend: stats.trend,
@@ -392,23 +484,69 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
 
   const reloadEvents = useCallback(() => { loadEvents(); }, [loadEvents]);
 
+  const loadDriverDistance = useCallback(async () => {
+    try {
+      const res = await authFetch(`/api/driver-distance?range=${distanceRange}`);
+      if (res.ok) setDriverDistance(await res.json());
+    } catch {}
+  }, [distanceRange]);
+
+  const loadFuelSummary = useCallback(async () => {
+    try {
+      const res = await authFetch('/api/fuel/consumption?period=week');
+      if (!res.ok) return;
+      const data = await res.json() as {
+        assets?: { totalFuelLiters?: number }[];
+        summary?: { totalFuelLiters?: number };
+      };
+      const assets = data.assets ?? [];
+      const totalFuel = data.summary?.totalFuelLiters
+        ?? assets.reduce((s, a) => s + (a.totalFuelLiters ?? 0), 0);
+      const perDay = Math.round(totalFuel / 7);
+      const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      setFuelSeries(days.map(day => ({ day, liters: perDay })));
+    } catch { /* keep defaults */ }
+  }, []);
+
+  const loadEnvironment = useCallback(async () => {
+    setEnvironment({ weather: 'Partly cloudy', traffic: 'Moderate', temp: '28°C' });
+  }, []);
+
   useEffect(() => {
     loadMetadata();
     loadVehicles();
     loadEvents();
+    loadDriverDistance();
+    loadFuelSummary();
+    loadEnvironment();
     const metaInterval = setInterval(loadMetadata, 10_000);
     const vehicleInterval = setInterval(loadVehicles, 10_000);
     const eventInterval = setInterval(loadEvents, 15_000);
+    const distanceInterval = setInterval(loadDriverDistance, 60_000);
+    const fuelInterval = setInterval(loadFuelSummary, 60_000);
     return () => {
       clearInterval(metaInterval);
       clearInterval(vehicleInterval);
       clearInterval(eventInterval);
+      clearInterval(distanceInterval);
+      clearInterval(fuelInterval);
     };
-  }, [loadMetadata, loadVehicles, loadEvents]);
+  }, [loadMetadata, loadVehicles, loadEvents, loadDriverDistance, loadFuelSummary, loadEnvironment]);
 
   const { score: fleetSafetyScore, delta: fleetScoreDelta } = computeFleetScore(events, vehicles.length);
+  const alerts = useMemo(() => deriveAlerts(events), [events]);
+  const drivers = useMemo(
+    () => deriveDriverScores(events).filter(d => isKnownDriver(d.name)),
+    [events],
+  );
+  const insights = useMemo(() => deriveInsights(events, vehicles), [events, vehicles]);
+  const maintenance = DEFAULT_MAINTENANCE;
+  const trips = DEMO_TRIPS;
+  const totalDistanceKm = Math.round(driverDistance?.totalDistanceKm ?? 0);
 
-  const redAlertCount = notifications.filter(n => n.analysis?.severity === 'RED').length;
+  const redAlertCount = notifications.filter(
+    n => n.analysis?.severity === 'RED' && isKnownDriver(n.driver.name),
+  ).length;
 
   const dismissNotification = useCallback((id: string) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
@@ -441,8 +579,13 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <FleetContext.Provider value={{
-      authFetch, metadata, vehicles, events,
-      fleetSafetyScore, fleetScoreDelta, redAlertCount,
+      authFetch, metadata, vehicles, events, driverDistance,
+      fleetSafetyScore, fleetScoreDelta,
+      safetyScore: fleetSafetyScore,
+      safetyDelta: fleetScoreDelta,
+      alerts, drivers, maintenance, fuelSeries, insights, trips,
+      distanceRange, setDistanceRange, totalDistanceKm, environment,
+      redAlertCount,
       notifications, dismissNotification, clearAllNotifications, selectedNotification,
       openNotification, closeNotification,
       vaultRecords, addVaultRecord, updateVaultRecord,

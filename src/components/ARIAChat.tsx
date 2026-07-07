@@ -1,7 +1,8 @@
-﻿import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Brain, X, Send, ChevronDown } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { useFleet } from '../context/FleetContext';
+import { displayDriverName, isKnownDriver } from '../lib/driverUtils';
 
 const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY;
 
@@ -10,7 +11,7 @@ interface Message {
   content: string;
 }
 
-const SYSTEM_PROMPT = `You are ARIA — Asset and Risk Intelligence Advisor — embedded fleet intelligence for Best Practices Limited (BPL).
+const SYSTEM_PROMPT = `You are BPL Analyst — embedded fleet intelligence for Best Practices Limited (BPL).
 
 Be sharp and brief. 3-5 sentences max unless the question genuinely demands more. Lead with the most important fact. Use specific names, numbers, and vehicles from the data. Never pad or repeat yourself.
 
@@ -108,9 +109,10 @@ const PAGE_LABELS: Record<string, string> = {
   '/drivers': 'Driver Management',
   '/incidents': 'Incident Intelligence',
   '/safety': 'Safety',
-  '/aria': 'ARIA Intelligence',
+  '/aria': 'BPL Analyst Intelligence',
   '/reports': 'Reports & Reviews',
-  '/operations': 'Operations',
+  '/trips': 'Trips',
+  '/trips/dispatch': 'Dispatch',
   '/settings': 'Settings',
 };
 
@@ -149,7 +151,7 @@ export default function ARIAChat() {
     const driverMap: Record<string, { incidents: number; types: Record<string, number>; lastSeen: string }> = {};
     events.forEach(e => {
       const name = e.driverName;
-      if (!name || name === 'N/A' || name === 'Unknown') return;
+      if (!isKnownDriver(name)) return;
       if (new Date(e.eventTime || e.timestamp).getTime() < thirtyDaysAgo) return;
       if (!driverMap[name]) driverMap[name] = { incidents: 0, types: {}, lastSeen: '' };
       driverMap[name].incidents++;
@@ -181,7 +183,7 @@ export default function ARIAChat() {
 
     // SafeIQ red alerts with analysis
     const redAlerts = notifications
-      .filter(n => n.analysis?.severity === 'RED')
+      .filter(n => n.analysis?.severity === 'RED' && isKnownDriver(n.driver.name))
       .slice(0, 5)
       .map(n => {
         const t = new Date(n.timestamp).toLocaleString('en-GB', { timeZone: 'Africa/Lagos' });
@@ -192,7 +194,7 @@ export default function ARIAChat() {
 
     // Yellow alerts
     const yellowAlerts = notifications
-      .filter(n => n.analysis?.severity === 'YELLOW')
+      .filter(n => n.analysis?.severity === 'YELLOW' && isKnownDriver(n.driver.name))
       .slice(0, 5)
       .map(n => `  [YELLOW] ${n.driver.name} | ${n.vehicle.id} | ${n.magnitude} | ${new Date(n.timestamp).toLocaleString('en-GB', { timeZone: 'Africa/Lagos' })}`)
       .join('\n');
@@ -207,10 +209,11 @@ export default function ARIAChat() {
     // Recent 10 raw events
     const recentEvents = events.slice(0, 10).map(e => {
       const t = e.eventTime ? new Date(e.eventTime).toLocaleString('en-GB', { timeZone: 'Africa/Lagos' }) : 'unknown';
-      return `  ${t} | ${e.label || 'Panic'} | ${e.driverName || 'Unknown'} | ${e.regNo || e.assetId} | ${e.address || 'No location'}`;
+      const driver = displayDriverName(e.driverName, '—');
+      return `  ${t} | ${e.label || 'Panic'} | ${driver !== '—' ? driver : '—'} | ${e.regNo || e.assetId} | ${e.address || 'No location'}`;
     }).join('\n');
 
-    return `ARIA FLEET INTELLIGENCE CONTEXT — ${watTime} (Lagos, WAT)
+    return `BPL ANALYST FLEET INTELLIGENCE CONTEXT — ${watTime} (Lagos, WAT)
 Current page: ${currentPage} | User: Fleet Safety Officer
 
 === FLEET STATUS ===
@@ -274,7 +277,7 @@ ${recentEvents || '  No recent events'}`;
         const err = await res.text();
         setMessages(prev => [...prev, {
           role: 'assistant',
-          content: `ARIA encountered an error: ${err || res.statusText}. Please check your API key configuration.`,
+          content: `BPL Analyst encountered an error: ${err || res.statusText}. Please check your API key configuration.`,
         }]);
         return;
       }
@@ -312,7 +315,7 @@ ${recentEvents || '  No recent events'}`;
     } catch (err) {
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: 'Unable to reach ARIA at this moment. Check network connectivity and API configuration.',
+        content: 'Unable to reach BPL Analyst at this moment. Check network connectivity and API configuration.',
       }]);
     } finally {
       setLoading(false);
@@ -338,7 +341,7 @@ ${recentEvents || '  No recent events'}`;
       <button
         className="bpl-aria-fab"
         onClick={() => setOpen(o => !o)}
-        title="Open ARIA"
+        title="Open BPL Analyst"
         style={{ bottom: open ? 'calc(100vh - 40px)' : 28 }}
       >
         {open ? <ChevronDown size={22} /> : <Brain size={22} />}
@@ -358,8 +361,8 @@ ${recentEvents || '  No recent events'}`;
               <Brain size={16} color="#60b4ff" />
             </div>
             <div>
-              <div className="bpl-aria-name">ARIA</div>
-              <div className="bpl-aria-tagline">Asset & Risk Intelligence Advisor</div>
+              <div className="bpl-aria-name">BPL Analyst</div>
+              <div className="bpl-aria-tagline">Fleet Intelligence</div>
             </div>
           </div>
           <button className="bpl-aria-close" onClick={() => setOpen(false)}>
@@ -398,7 +401,7 @@ ${recentEvents || '  No recent events'}`;
                   <Brain size={22} color="var(--bpl-blue)" />
                 </div>
                 <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--cd-text)', marginBottom: 4, fontFamily: 'var(--cd-font-display)' }}>
-                  ARIA is ready
+                  BPL Analyst is ready
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--cd-text-muted)', lineHeight: 1.5 }}>
                   Ask me anything about the fleet — drivers, incidents, safety, compliance.
@@ -432,7 +435,7 @@ ${recentEvents || '  No recent events'}`;
           {messages.map((msg, i) => (
             <div key={i} className={`bpl-aria-msg bpl-aria-msg-${msg.role}`}>
               {msg.role === 'assistant' && (
-                <div style={{ fontSize: 10, color: 'var(--cd-text-muted)', marginBottom: 3, fontWeight: 600 }}>ARIA</div>
+                <div style={{ fontSize: 10, color: 'var(--cd-text-muted)', marginBottom: 3, fontWeight: 600 }}>BPL Analyst</div>
               )}
               <div className={`bpl-aria-bubble bpl-aria-bubble-${msg.role}`}>
                 {msg.role === 'assistant' ? renderMessage(msg.content) : msg.content}
@@ -469,7 +472,7 @@ ${recentEvents || '  No recent events'}`;
           <textarea
             ref={textareaRef}
             className="bpl-aria-input"
-            placeholder="Ask ARIA anything about the fleet..."
+            placeholder="Ask BPL Analyst anything about the fleet..."
             value={input}
             onChange={handleTextareaChange}
             onKeyDown={handleKeyDown}

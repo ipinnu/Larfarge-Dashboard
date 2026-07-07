@@ -2,13 +2,18 @@ import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { FleetProvider } from './context/FleetContext';
 import AppShell from './components/layout/AppShell';
 import Dashboard from './pages/Dashboard';
+import FleetPage from './pages/FleetPage';
+import DispatchPage from './pages/DispatchPage';
+import TripsPage from './pages/TripsPage';
+import AiInsightsPage from './pages/AiInsightsPage';
+import ReportsPage from './pages/ReportsPage';
+import DocumentsPage from './pages/DocumentsPage';
 import DriverManagement from './pages/DriverManagement';
 import IncidentIntelligence from './pages/IncidentIntelligence';
 import Safety from './pages/Safety';
-import ReportsReviews from './pages/ReportsReviews';
-import Operations from './pages/Operations';
 import Settings from './pages/Settings';
 import Maintenance from './pages/Maintenance';
+import Tankers from './pages/Tankers';
 
 export default function App() {
   return (
@@ -16,43 +21,35 @@ export default function App() {
       <HashRouter>
         <Routes>
           <Route element={<AppShell />}>
-            {/* Dashboard */}
             <Route path="/" element={<Dashboard />} />
+            <Route path="/fleet" element={<FleetPage />} />
 
-            {/* Driver Management */}
             <Route path="/drivers" element={<DriverManagement tab="drivers" />} />
             <Route path="/drivers/coaching" element={<DriverManagement tab="coaching" />} />
             <Route path="/drivers/training" element={<DriverManagement tab="training" />} />
             <Route path="/drivers/certifications" element={<DriverManagement tab="certifications" />} />
 
-            {/* Incident Intelligence */}
             <Route path="/incidents" element={<IncidentIntelligence tab="events" />} />
             <Route path="/incidents/analysis" element={<IncidentIntelligence tab="by-driver" />} />
             <Route path="/incidents/response" element={<IncidentIntelligence tab="patterns" />} />
 
-            {/* Safety */}
             <Route path="/safety" element={<Safety />} />
 
+            <Route path="/trips" element={<TripsPage />} />
+            <Route path="/trips/dispatch" element={<DispatchPage />} />
+            <Route path="/dispatch" element={<Navigate to="/trips/dispatch" replace />} />
+            <Route path="/aria" element={<AiInsightsPage />} />
 
-            {/* Reports & Reviews */}
-            <Route path="/reports" element={<Navigate to="/reports/weekly" replace />} />
-            <Route path="/reports/weekly" element={<ReportsReviews tab="weekly" />} />
-            <Route path="/reports/monthly" element={<ReportsReviews tab="monthly" />} />
-            <Route path="/reports/quarterly" element={<ReportsReviews tab="quarterly" />} />
-            <Route path="/reports/actions" element={<ReportsReviews tab="actions" />} />
-            <Route path="/reports/documents" element={<ReportsReviews tab="documents" />} />
+            <Route path="/reports" element={<ReportsPage />} />
+            <Route path="/reports/documents" element={<DocumentsPage />} />
+            <Route path="/reports/*" element={<Navigate to="/reports" replace />} />
 
-            {/* Operations */}
-            <Route path="/operations" element={<Navigate to="/operations/utilization" replace />} />
-            <Route path="/operations/utilization" element={<Operations tab="utilization" />} />
-            <Route path="/operations/productivity" element={<Operations tab="productivity" />} />
-            <Route path="/operations/economics" element={<Operations tab="economics" />} />
-            <Route path="/operations/fuel" element={<Operations tab="fuel" />} />
+            <Route path="/operations" element={<Navigate to="/trips" replace />} />
+            <Route path="/operations/*" element={<Navigate to="/trips" replace />} />
 
-            {/* Maintenance */}
+            <Route path="/tankers" element={<Tankers />} />
             <Route path="/maintenance" element={<Maintenance />} />
 
-            {/* Settings */}
             <Route path="/settings" element={<Navigate to="/settings/general" replace />} />
             <Route path="/settings/general" element={<Settings tab="general" />} />
             <Route path="/settings/thresholds" element={<Settings tab="thresholds" />} />

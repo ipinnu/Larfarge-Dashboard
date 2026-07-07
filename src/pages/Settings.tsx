@@ -173,7 +173,7 @@ function ThresholdSettings() {
 function APISettings() {
   const apiKeys = [
     { name: 'MiX Telematics', key: 'VITE_API_SECRET', status: 'connected', desc: 'Live vehicle telemetry and event data' },
-    { name: 'Claude (ARIA)', key: 'VITE_ANTHROPIC_API_KEY', status: import.meta.env.VITE_ANTHROPIC_API_KEY ? 'connected' : 'not_configured', desc: 'AI analysis and ARIA chat intelligence' },
+    { name: 'Claude (BPL Analyst)', key: 'VITE_ANTHROPIC_API_KEY', status: import.meta.env.VITE_ANTHROPIC_API_KEY ? 'connected' : 'not_configured', desc: 'AI analysis and BPL Analyst chat intelligence' },
     { name: 'Open-Meteo', key: 'None required', status: 'connected', desc: 'Live weather at incident coordinates via /api/environment' },
     { name: 'TomTom Traffic', key: 'TOMTOM_API_KEY', status: 'server_side', desc: 'Recommended live traffic provider for Lagos/Nigeria — Traffic Flow API' },
     { name: 'Google Maps Traffic', key: 'GOOGLE_MAPS_API_KEY', status: 'server_side', desc: 'Backup live traffic provider — falls back to heuristic without key' },
@@ -213,7 +213,7 @@ function APISettings() {
 function RoleSettings() {
   const roles = [
     { role: 'Admin', desc: 'Full platform access, user management, API configuration', permissions: ['All sections', 'User management', 'Settings', 'Reset'] },
-    { role: 'HSE Officer', desc: 'Safety Vault, ARIA Intelligence, Driver Management, Incident Intelligence', permissions: ['Safety Vault', 'ARIA Intelligence', 'Driver Management', 'Incidents', 'Reports'] },
+    { role: 'HSE Officer', desc: 'Safety Vault, BPL Analyst Intelligence, Driver Management, Incident Intelligence', permissions: ['Safety Vault', 'BPL Analyst Intelligence', 'Driver Management', 'Incidents', 'Reports'] },
     { role: 'Operations Manager', desc: 'Dashboard, Fleet view, Operations, limited Safety access', permissions: ['Dashboard', 'Operations', 'Driver Management (read)', 'Incidents (read)'] },
     { role: 'View Only', desc: 'Read-only access to Dashboard and Reports', permissions: ['Dashboard (read)', 'Reports (read)'] },
   ];

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { X, Search, ChevronDown, ChevronUp } from 'lucide-react';
+import { isKnownDriver } from '../lib/driverUtils';
 
 declare const jspdf: any;
 
@@ -142,9 +143,9 @@ export default function DriverRiskPanel({ open, onClose, authFetch, isMobile }: 
     if (HIDDEN_LABELS.includes(label)) return;
     if (!getDateFilter(entry)) return;
 
-    const driverKey = entry.driverName && entry.driverName !== 'N/A' && entry.driverName !== 'No driver assigned'
-      ? entry.driverName
-      : `Unknown (${entry.assetId || 'N/A'})`;
+    if (!isKnownDriver(entry.driverName)) return;
+
+    const driverKey = entry.driverName!;
 
     if (!driverMap.has(driverKey)) {
       driverMap.set(driverKey, {

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { X, Search } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { isKnownDriver, displayDriverName } from '../lib/driverUtils';
 
 interface LogEntry {
   timestamp: string;
@@ -152,7 +153,7 @@ export default function EventLogPanel({ open, onClose, authFetch, isMobile }: Pr
       (e.regNo && e.regNo !== 'N/A' && e.regNo.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (e.assetName && e.assetName.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (e.assetId && e.assetId.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (e.driverName && e.driverName !== 'N/A' && e.driverName.toLowerCase().includes(searchTerm.toLowerCase()));
+      (isKnownDriver(e.driverName) && e.driverName!.toLowerCase().includes(searchTerm.toLowerCase()));
     return matchesFilter && matchesSearch && getDateFilter(e);
   }), [entries, activeFilter, searchTerm, dateRange, fromDate, toDate]);
 
@@ -390,7 +391,7 @@ export default function EventLogPanel({ open, onClose, authFetch, isMobile }: Pr
                 ? entry.address
                 : '';
               const displayName = entry.regNo && entry.regNo !== 'N/A' ? entry.regNo : entry.assetId;
-              const hasDriver = entry.driverName && entry.driverName !== 'N/A' && entry.driverName !== 'No Driver Assigned';
+              const hasDriver = isKnownDriver(entry.driverName);
               return (
                 <div
                   key={`${entry.eventId}-${i}`}
@@ -417,7 +418,7 @@ export default function EventLogPanel({ open, onClose, authFetch, isMobile }: Pr
                   )}
                   {hasDriver && (
                     <div style={{ fontSize: '11px', color: 'var(--cd-text-muted)', marginBottom: address ? '2px' : '0' }}>
-                      👤 {entry.driverName}{entry.driverPhone && entry.driverPhone !== 'N/A' ? ` · ${entry.driverPhone}` : ''}
+                      👤 {displayDriverName(entry.driverName)}{entry.driverPhone && entry.driverPhone !== 'N/A' ? ` · ${entry.driverPhone}` : ''}
                     </div>
                   )}
                   {address && (

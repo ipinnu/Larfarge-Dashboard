@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import {
-  TrendingUp, TrendingDown, Minus, AlertTriangle,
+  TrendingUp, TrendingDown, Minus,
   ShieldCheck, ShieldAlert, Shield, ArrowRight,
   Users, Activity, Zap, Target,
 } from 'lucide-react';
@@ -10,6 +10,7 @@ import {
 } from 'recharts';
 import { useFleet } from '../context/FleetContext';
 import type { LogEntry } from '../context/FleetContext';
+import { isKnownDriver } from '../lib/driverUtils';
 
 // ─── scoring weights (mirror computeFleetScore) ──────────────────────────────
 const WEIGHTS: Record<string, number> = {
@@ -19,11 +20,12 @@ const WEIGHTS: Record<string, number> = {
   'Overspeed Tiered': 1.5,
   'Harsh Cornering': 1,
 };
-const PANIC_WEIGHT = 5;
 const REFERENCE_FLEET = 50;
+const HIDDEN = ['Possible Power Tamper', 'Battery Disconnection', 'Battery Disconnected', 'Front Panel Tamper', 'Back Panel Tamper', 'No Blue Key'];
+
+const isSafetyEvent = (e: LogEntry) => e.type !== 'panic' && !HIDDEN.includes(e.label || '');
 
 function eventWeight(e: LogEntry) {
-  if (e.type === 'panic') return PANIC_WEIGHT;
   return WEIGHTS[e.label || ''] ?? 0;
 }
 
@@ -32,8 +34,6 @@ function scoreFromEvents(evts: LogEntry[], vehicleCount: number) {
   const deduction = evts.reduce((acc, e) => acc + eventWeight(e), 0);
   return Math.max(30, Math.min(100, Math.round(100 - deduction * scale)));
 }
-
-const HIDDEN = ['Possible Power Tamper', 'Battery Disconnection', 'Battery Disconnected', 'Front Panel Tamper', 'Back Panel Tamper', 'No Blue Key'];
 
 const scoreColor = (s: number) =>
   s >= 80 ? '#16a34a' : s >= 60 ? '#d97706' : s >= 45 ? '#e05c2a' : '#CC0000';
@@ -115,10 +115,9 @@ function ScoreGauge({ score, delta, totalIncidents, vehicleCount }: {
       <div style={{
         borderTop: '1px solid var(--cd-border)',
         paddingTop: 14,
-        display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8,
+        display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8,
       }}>
         {[
-          { label: 'Panic Alert', weight: 5, color: '#CC0000' },
           { label: 'Harsh Braking', weight: 2, color: '#e05c2a' },
           { label: 'Overspeeding', weight: 1.5, color: '#d97706' },
           { label: 'Harsh Accel.', weight: 1.5, color: '#f59e0b' },
@@ -143,14 +142,13 @@ function ScoreGauge({ score, delta, totalIncidents, vehicleCount }: {
 // ─── IncidentBreakdown (bar chart) ───────────────────────────────────────────
 function IncidentBreakdown({ events }: { events: LogEntry[] }) {
   const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-  const recent = events.filter(e => new Date(e.eventTime || e.timestamp).getTime() >= thirtyDaysAgo && !HIDDEN.includes(e.label || ''));
+  const recent = events.filter(e => new Date(e.eventTime || e.timestamp).getTime() >= thirtyDaysAgo && isSafetyEvent(e));
 
   const data = [
     { name: 'Harsh Braking', count: recent.filter(e => e.label === 'Harsh Braking').length, color: '#e05c2a', weight: 2 },
     { name: 'Overspeeding', count: recent.filter(e => e.label === 'Overspeeding' || e.label === 'Overspeed Tiered').length, color: '#d97706', weight: 1.5 },
     { name: 'Harsh Accel.', count: recent.filter(e => e.label === 'Harsh Acceleration').length, color: '#f59e0b', weight: 1.5 },
     { name: 'Cornering', count: recent.filter(e => e.label === 'Harsh Cornering').length, color: '#8b5cf6', weight: 1 },
-    { name: 'Panic', count: recent.filter(e => e.type === 'panic').length, color: '#CC0000', weight: 5 },
   ].sort((a, b) => b.count - a.count);
 
   const totalDeduction = data.reduce((acc, d) => acc + d.count * d.weight, 0);
@@ -188,22 +186,21 @@ function WorstPerformers({ events, vehicleCount }: { events: LogEntry[]; vehicle
   const driverMap = useMemo(() => {
     const map: Record<string, {
       name: string; incidents: number; riskScore: number;
-      types: Record<string, number>; hasPanic: boolean; lastEvent: string;
+      types: Record<string, number>; lastEvent: string;
     }> = {};
 
     events.forEach(e => {
       const name = e.driverName;
-      if (!name || name === 'N/A' || name === 'Unknown' || name === 'N/A (N/A)') return;
-      if (HIDDEN.includes(e.label || '')) return;
+      if (!isKnownDriver(name)) return;
+      if (!isSafetyEvent(e)) return;
       const ts = new Date(e.eventTime || e.timestamp).getTime();
       if (ts < thirtyDaysAgo) return;
 
-      if (!map[name]) map[name] = { name, incidents: 0, riskScore: 0, types: {}, hasPanic: false, lastEvent: '' };
+      if (!map[name]) map[name] = { name, incidents: 0, riskScore: 0, types: {}, lastEvent: '' };
       map[name].incidents++;
       map[name].riskScore += eventWeight(e);
-      const lbl = e.type === 'panic' ? 'Panic' : (e.label || 'Unknown');
+      const lbl = e.label || 'Unknown';
       map[name].types[lbl] = (map[name].types[lbl] || 0) + 1;
-      if (e.type === 'panic') map[name].hasPanic = true;
       const t = e.eventTime || e.timestamp;
       if (!map[name].lastEvent || t > map[name].lastEvent) map[name].lastEvent = t;
     });
@@ -263,14 +260,13 @@ function WorstPerformers({ events, vehicleCount }: { events: LogEntry[]; vehicle
                 padding: '11px 20px',
                 borderBottom: i < driverMap.length - 1 ? '1px solid var(--cd-border)' : 'none',
                 alignItems: 'center',
-                background: d.hasPanic ? 'rgba(204,0,0,0.03)' : 'transparent',
+                background: 'transparent',
               }}>
                 <span style={{ fontSize: 11, color: 'var(--cd-text-muted)', fontWeight: 600 }}>{i + 1}</span>
 
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--cd-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
                     {d.name}
-                    {d.hasPanic && <AlertTriangle size={11} color="#CC0000" />}
                   </div>
                   <div style={{ fontSize: 10, color: 'var(--cd-text-muted)', marginTop: 1 }}>
                     {Object.entries(d.types).map(([t, c]) => `${t} ×${c}`).join(' · ')}
@@ -318,7 +314,7 @@ function WorstPerformers({ events, vehicleCount }: { events: LogEntry[]; vehicle
 // ─── RadarCard ───────────────────────────────────────────────────────────────
 function SafetyRadar({ events }: { events: LogEntry[] }) {
   const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-  const recent = events.filter(e => new Date(e.eventTime || e.timestamp).getTime() >= thirtyDaysAgo);
+  const recent = events.filter(e => new Date(e.eventTime || e.timestamp).getTime() >= thirtyDaysAgo && isSafetyEvent(e));
   const total = Math.max(recent.length, 1);
 
   const data = [
@@ -326,7 +322,6 @@ function SafetyRadar({ events }: { events: LogEntry[] }) {
     { subject: 'Speed', value: Math.round((1 - recent.filter(e => e.label?.includes('Overspeed')).length / total) * 100) },
     { subject: 'Acceleration', value: Math.round((1 - recent.filter(e => e.label === 'Harsh Acceleration').length / total) * 100) },
     { subject: 'Cornering', value: Math.round((1 - recent.filter(e => e.label === 'Harsh Cornering').length / total) * 100) },
-    { subject: 'Panic-Free', value: Math.round((1 - recent.filter(e => e.type === 'panic').length / total) * 100) },
   ];
 
   return (
@@ -352,27 +347,18 @@ function SafetyRadar({ events }: { events: LogEntry[] }) {
 function PriorityActions({ events, score, vehicleCount }: { events: LogEntry[]; score: number; vehicleCount: number }) {
   const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
   const recent = events.filter(e =>
-    new Date(e.eventTime || e.timestamp).getTime() >= thirtyDaysAgo && !HIDDEN.includes(e.label || '')
+    new Date(e.eventTime || e.timestamp).getTime() >= thirtyDaysAgo && isSafetyEvent(e)
   );
 
   const actions = useMemo(() => {
     const list: { priority: 'critical' | 'high' | 'medium'; title: string; detail: string; icon: React.ElementType }[] = [];
 
-    const panicDrivers = [...new Set(recent.filter(e => e.type === 'panic').map(e => e.driverName).filter(Boolean))];
-    if (panicDrivers.length > 0) {
-      list.push({
-        priority: 'critical',
-        title: `${panicDrivers.length} driver${panicDrivers.length > 1 ? 's' : ''} triggered panic alerts`,
-        detail: `Immediate supervisor review required: ${panicDrivers.slice(0, 3).join(', ')}${panicDrivers.length > 3 ? ` +${panicDrivers.length - 3} more` : ''}`,
-        icon: AlertTriangle,
-      });
-    }
-
     const brakingCount = recent.filter(e => e.label === 'Harsh Braking').length;
     if (brakingCount > 10) {
       const topBraker = Object.entries(
         recent.filter(e => e.label === 'Harsh Braking').reduce((acc, e) => {
-          const n = e.driverName || 'Unknown';
+          if (!isKnownDriver(e.driverName)) return acc;
+          const n = e.driverName!;
           acc[n] = (acc[n] || 0) + 1;
           return acc;
         }, {} as Record<string, number>)
@@ -408,7 +394,7 @@ function PriorityActions({ events, score, vehicleCount }: { events: LogEntry[]; 
     const repeatDrivers = Object.entries(
       recent.reduce((acc, e) => {
         const n = e.driverName;
-        if (!n || n === 'N/A' || n === 'Unknown') return acc;
+        if (!isKnownDriver(n)) return acc;
         acc[n] = (acc[n] || 0) + 1;
         return acc;
       }, {} as Record<string, number>)
@@ -436,7 +422,6 @@ function PriorityActions({ events, score, vehicleCount }: { events: LogEntry[]; 
   }, [recent, score, vehicleCount]);
 
   const priorityStyle = (p: string) => {
-    if (p === 'critical') return { bg: 'rgba(204,0,0,0.06)', border: 'rgba(204,0,0,0.25)', dot: '#CC0000', label: 'Critical' };
     if (p === 'high') return { bg: 'rgba(224,92,42,0.06)', border: 'rgba(224,92,42,0.25)', dot: '#e05c2a', label: 'High' };
     return { bg: 'rgba(217,119,6,0.06)', border: 'rgba(217,119,6,0.25)', dot: '#d97706', label: 'Medium' };
   };
@@ -495,21 +480,19 @@ function KpiStrip({ events, vehicleCount }: { events: LogEntry[]; vehicleCount: 
   const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
   const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
 
-  const recent30 = events.filter(e => !HIDDEN.includes(e.label || '') && new Date(e.eventTime || e.timestamp).getTime() >= thirtyDaysAgo);
-  const recent7 = events.filter(e => !HIDDEN.includes(e.label || '') && new Date(e.eventTime || e.timestamp).getTime() >= sevenDaysAgo);
-  const panicCount = recent30.filter(e => e.type === 'panic').length;
+  const recent30 = events.filter(e => isSafetyEvent(e) && new Date(e.eventTime || e.timestamp).getTime() >= thirtyDaysAgo);
+  const recent7 = events.filter(e => isSafetyEvent(e) && new Date(e.eventTime || e.timestamp).getTime() >= sevenDaysAgo);
   const affectedVehicles = new Set(recent30.map(e => e.assetId)).size;
   const cleanVehicles = vehicleCount - affectedVehicles;
 
   const kpis = [
     { label: 'Incidents (30d)', value: recent30.length, sub: `${recent7.length} this week`, color: '#0078D4', icon: Activity },
-    { label: 'Panic Alerts (30d)', value: panicCount, sub: panicCount > 0 ? 'Immediate review needed' : 'None recorded', color: panicCount > 0 ? '#CC0000' : '#16a34a', icon: AlertTriangle },
     { label: 'Vehicles with Incidents', value: affectedVehicles, sub: `${vehicleCount > 0 ? Math.round((affectedVehicles / vehicleCount) * 100) : 0}% of fleet`, color: '#e05c2a', icon: Shield },
     { label: 'Clean Vehicles', value: cleanVehicles >= 0 ? cleanVehicles : '—', sub: 'Zero incidents (30d)', color: '#16a34a', icon: ShieldCheck },
   ];
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
       {kpis.map(k => {
         const Icon = k.icon;
         return (
@@ -529,12 +512,18 @@ function KpiStrip({ events, vehicleCount }: { events: LogEntry[]; vehicleCount: 
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 export default function Safety() {
-  const { events, vehicles, fleetSafetyScore, fleetScoreDelta } = useFleet();
+  const { events, vehicles } = useFleet();
 
   const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-  const totalIncidents = events.filter(e =>
-    !HIDDEN.includes(e.label || '') && new Date(e.eventTime || e.timestamp).getTime() >= thirtyDaysAgo
-  ).length;
+  const sixtyDaysAgo = Date.now() - 60 * 24 * 60 * 60 * 1000;
+  const recentIncidents = events.filter(e => isSafetyEvent(e) && new Date(e.eventTime || e.timestamp).getTime() >= thirtyDaysAgo);
+  const previousIncidents = events.filter(e => {
+    const t = new Date(e.eventTime || e.timestamp).getTime();
+    return isSafetyEvent(e) && t >= sixtyDaysAgo && t < thirtyDaysAgo;
+  });
+  const fleetSafetyScore = scoreFromEvents(recentIncidents, vehicles.length);
+  const fleetScoreDelta = fleetSafetyScore - scoreFromEvents(previousIncidents, vehicles.length);
+  const totalIncidents = recentIncidents.length;
 
   return (
     <div>

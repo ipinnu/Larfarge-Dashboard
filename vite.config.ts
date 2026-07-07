@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { pollOnce, startPolling, clearTriggeredEvent, resetState, getWarningEvents } from './scripts/mix-test.js'
+import { pollOnce, startPolling, clearTriggeredEvent, resetState, getWarningEvents, getSessionTrips, getDriverDistanceSummary } from './scripts/mix-test.js'
 import { resolveEnvironment } from './scripts/environment-service.js'
 import * as dotenv from 'dotenv'
 import fs from 'fs'
@@ -258,6 +258,28 @@ export default defineConfig({
             res.setHeader('Content-Type', 'application/json')
             res.end(JSON.stringify({ error: 'Environment lookup failed' }))
           }
+        })
+
+        // GET /api/trips/session
+        server.middlewares.use('/api/trips/session', (req, res) => {
+          if (!isAuthorized(req)) { res.statusCode = 401; res.end('Unauthorized'); return }
+          if (req.method !== 'GET') { res.statusCode = 405; res.end('Method Not Allowed'); return }
+          res.setHeader('Content-Type', 'application/json')
+          res.end(JSON.stringify(getSessionTrips()))
+        })
+
+        // GET /api/driver-distance?range=24h|currentMonth|lastMonth|month&month=YYYY-MM
+        server.middlewares.use('/api/driver-distance', (req, res) => {
+          if (!isAuthorized(req)) { res.statusCode = 401; res.end('Unauthorized'); return }
+          if (req.method !== 'GET') { res.statusCode = 405; res.end('Method Not Allowed'); return }
+          const qs = (req.originalUrl || req.url || '').split('?')[1] || ''
+          const params = new URLSearchParams(qs)
+          // Strip journeys arrays — kept in-memory for per-asset detail route
+          if ((req.originalUrl || req.url || '').includes('/journeys/')) { res.statusCode = 404; res.end('Not Found'); return }
+          const summary = getDriverDistanceSummary({ range: params.get('range') || '24h', month: params.get('month') || null })
+          const slim = { ...summary, assets: summary.assets.map(({ journeys, ...rest }: any) => rest) }
+          res.setHeader('Content-Type', 'application/json')
+          res.end(JSON.stringify(slim))
         })
 
         // GET /api/drivers

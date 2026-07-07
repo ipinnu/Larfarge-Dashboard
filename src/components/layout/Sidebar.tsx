@@ -4,8 +4,8 @@ import {
   LayoutDashboard, Users, User, GraduationCap, Award, BadgeCheck,
   AlertTriangle, Search, ScatterChart, ListChecks,
   Shield, FileText, Wrench, MessageSquare, History,
-  FileBarChart2, Calendar, BarChart3, Target, Folder,
-  Truck, Percent, Clock, DollarSign, Fuel,
+  FileBarChart2, Folder,
+  Truck, Map, Navigation, Route, Brain,
   Settings, ChevronDown, Sun, Moon, LogOut,
 } from 'lucide-react';
 import { useFleet } from '../../context/FleetContext';
@@ -26,6 +26,7 @@ interface NavGroup {
 
 const NAV: NavGroup[] = [
   { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
+  { path: '/fleet', icon: Map, label: 'Fleet' },
   {
     path: '/drivers', icon: Users, label: 'Driver Management',
     children: [
@@ -43,24 +44,21 @@ const NAV: NavGroup[] = [
       { path: '/incidents/response', label: 'Response Tracking', icon: ListChecks },
     ],
   },
+  { path: '/tankers', icon: Truck, label: 'Bulk Tankers' },
   { path: '/safety', icon: Shield, label: 'Safety' },
-  { path: '/operations/fuel', icon: Fuel, label: 'Fuel Monitoring' },
   {
-    path: '/reports', icon: FileBarChart2, label: 'Reports & Reviews',
+    path: '/trips', icon: Route, label: 'Trips',
     children: [
-      { path: '/reports/weekly', label: 'Weekly', icon: Calendar },
-      { path: '/reports/monthly', label: 'Monthly', icon: Calendar },
-      { path: '/reports/quarterly', label: 'Quarterly', icon: BarChart3 },
-      { path: '/reports/actions', label: 'Action Tracking', icon: Target },
-      { path: '/reports/documents', label: 'Documents', icon: Folder },
+      { path: '/trips', label: 'All trips', icon: Route },
+      { path: '/trips/dispatch', label: 'Dispatch', icon: Navigation },
     ],
   },
+  { path: '/aria', icon: Brain, label: 'AI Insights' },
   {
-    path: '/operations', icon: Truck, label: 'Operations',
+    path: '/reports', icon: FileBarChart2, label: 'Reports',
     children: [
-      { path: '/operations/utilization', label: 'Utilization', icon: Percent },
-      { path: '/operations/productivity', label: 'Productivity', icon: Clock },
-      { path: '/operations/economics', label: 'Asset Economics', icon: DollarSign },
+      { path: '/reports', label: 'Reports', icon: FileBarChart2 },
+      { path: '/reports/documents', label: 'Documents', icon: Folder },
     ],
   },
   { path: '/maintenance', icon: Wrench, label: 'Maintenance' },
@@ -116,16 +114,16 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: Props) {
           <div style={{
             background: '#fff',
             borderRadius: 6,
-            padding: '4px 8px',
+            padding: '5px 10px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             flexShrink: 0,
           }}>
             <img
-              src="/Lafarge_(Unternehmen)_logo.svg"
-              alt="Lafarge"
-              style={{ height: 24, width: 'auto', objectFit: 'contain', display: 'block' }}
+              src="/HBM-logo.jpeg"
+              alt="HBM Nigeria"
+              style={{ height: 32, width: 'auto', objectFit: 'contain', display: 'block' }}
             />
           </div>
           <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', lineHeight: 1.4 }}>
@@ -275,7 +273,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: Props) {
         })}
       </div>
 
-      {/* Bottom: Settings + ARIA badge */}
+      {/* Bottom: Settings + BPL Analyst badge */}
       <div style={{ borderTop: '0.5px solid rgba(255,255,255,0.08)', paddingBottom: 12 }}>
         <NavLink
           to="/settings/general"
@@ -297,7 +295,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: Props) {
           Settings
         </NavLink>
 
-        {/* ARIA online badge */}
+        {/* BPL Analyst online badge */}
         <div style={{
           margin: '8px 10px 0',
           background: 'rgba(0,120,212,0.12)',
@@ -311,7 +309,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: Props) {
             animation: 'aria-pulse 2s ease-in-out infinite',
             flexShrink: 0,
           }} />
-          <span style={{ fontSize: 11, color: 'rgba(0,120,212,0.9)', fontWeight: 500 }}>ARIA online</span>
+          <span style={{ fontSize: 11, color: 'rgba(0,120,212,0.9)', fontWeight: 500 }}>BPL Analyst online</span>
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             style={{

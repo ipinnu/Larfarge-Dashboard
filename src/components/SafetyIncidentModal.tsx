@@ -23,8 +23,8 @@ function HighlightedText({ text }: { text: string }) {
     parts.push(
       <mark key={match.index} style={{
         fontWeight: 700,
-        color: isDanger ? '#CC0000' : 'inherit',
-        background: isDanger ? 'rgba(204,0,0,0.07)' : 'transparent',
+        color: isDanger ? 'var(--cd-danger)' : 'inherit',
+        background: isDanger ? 'var(--cd-danger-bg)' : 'transparent',
         borderRadius: isDanger ? 3 : 0,
         padding: isDanger ? '0 2px' : 0,
         fontStyle: 'inherit',
@@ -46,15 +46,15 @@ interface Props {
 }
 
 function severityBannerStyle(s: Severity): React.CSSProperties {
-  if (s === 'RED') return { background: '#fef2f2', borderBottom: '1px solid #fecaca' };
-  if (s === 'YELLOW') return { background: '#fffbeb', borderBottom: '1px solid #fef08a' };
-  return { background: '#f0fdf4', borderBottom: '1px solid #bbf7d0' };
+  if (s === 'RED') return { background: 'var(--cd-danger-bg)', borderBottom: '1px solid var(--cd-danger-border)' };
+  if (s === 'YELLOW') return { background: 'var(--cd-status-idle-bg)', borderBottom: '1px solid var(--cd-status-idle-border)' };
+  return { background: 'var(--cd-status-moving-bg)', borderBottom: '1px solid var(--cd-status-moving-border)' };
 }
 
 function severityBadgeStyle(s: Severity): React.CSSProperties {
-  if (s === 'RED') return { background: '#fecaca', color: '#dc2626', border: '1px solid #fca5a5' };
-  if (s === 'YELLOW') return { background: '#fef08a', color: '#d97706', border: '1px solid #fde047' };
-  return { background: '#bbf7d0', color: '#16a34a', border: '1px solid #86efac' };
+  if (s === 'RED') return { background: 'var(--cd-danger-bg)', color: 'var(--cd-danger)', border: '1px solid var(--cd-danger-border)' };
+  if (s === 'YELLOW') return { background: 'var(--cd-status-idle-bg)', color: 'var(--cd-status-idle-text)', border: '1px solid var(--cd-status-idle-border)' };
+  return { background: 'var(--cd-status-moving-bg)', color: 'var(--cd-status-moving-text)', border: '1px solid var(--cd-status-moving-border)' };
 }
 
 function severityEmoji(s: Severity) {
@@ -289,12 +289,12 @@ export default function SafetyIncidentModal({ notification: n, onClose }: Props)
 
           {/* Section 5 — Ops Flag */}
           {analysis?.ops_flag && (
-            <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', padding: '14px' }}>
+            <div style={{ background: 'var(--cd-danger-bg)', border: '1px solid var(--cd-danger-border)', borderRadius: '10px', padding: '14px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                 <span style={{ fontSize: '16px' }}>⚠️</span>
-                <span style={{ fontSize: '13px', fontWeight: '700', color: '#dc2626', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>Operations Flag</span>
+                <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--cd-danger)', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>Operations Flag</span>
               </div>
-              <div style={{ fontSize: '13px', color: '#991b1b', lineHeight: '1.6' }}><HighlightedText text={analysis.ops_flag_reason} /></div>
+              <div style={{ fontSize: '13px', color: 'var(--cd-text)', lineHeight: '1.6' }}><HighlightedText text={analysis.ops_flag_reason} /></div>
             </div>
           )}
 

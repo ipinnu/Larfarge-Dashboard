@@ -6,6 +6,7 @@ import {
 } from 'recharts';
 import { useFleet } from '../context/FleetContext';
 import type { LogEntry } from '../context/FleetContext';
+import { isKnownDriver, displayDriverName } from '../lib/driverUtils';
 
 type Tab = 'events' | 'by-driver' | 'trends' | 'patterns';
 type DateRange = 'today' | '7days' | '30days' | 'alltime';
@@ -142,7 +143,7 @@ function EventsTab({ events }: { events: LogEntry[] }) {
                       {label}
                     </span>
                   </td>
-                  <td style={{ fontWeight: 500 }}>{e.driverName || '—'}</td>
+                  <td style={{ fontWeight: 500 }}>{displayDriverName(e.driverName)}</td>
                   <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{e.regNo || e.assetId}</td>
                   <td style={{ fontSize: 12, color: 'var(--cd-text-muted)' }}>{e.transporter || '—'}</td>
                   <td style={{ fontSize: 12, color: 'var(--cd-text-muted)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -169,7 +170,8 @@ function ByDriverTab({ events }: { events: LogEntry[] }) {
     events.forEach(e => {
       const label = getLabel(e);
       if (HIDDEN_LABELS.includes(label)) return;
-      const key = e.driverName && e.driverName !== 'N/A' ? e.driverName : `Unknown (${e.assetId})`;
+      if (!isKnownDriver(e.driverName)) return;
+      const key = e.driverName!;
       if (!m.has(key)) m.set(key, { name: key, counts: {}, total: 0 });
       const d = m.get(key)!;
       d.counts[label] = (d.counts[label] || 0) + 1;
@@ -282,7 +284,7 @@ function PatternsTab({ events }: { events: LogEntry[] }) {
     events.forEach(e => {
       const label = getLabel(e);
       if (HIDDEN_LABELS.includes(label) || label === 'Unknown') return;
-      const key = e.driverName && e.driverName !== 'N/A' ? e.driverName : null;
+      const key = isKnownDriver(e.driverName) ? e.driverName! : null;
       if (!key) return;
       if (!driverCounts.has(key)) driverCounts.set(key, { name: key, count: 0, labels: [] });
       const d = driverCounts.get(key)!;

@@ -1,5 +1,6 @@
 import { Brain, AlertTriangle, TrendingDown, BookOpen, Zap, CheckCircle } from 'lucide-react';
 import { useFleet } from '../context/FleetContext';
+import { isKnownDriver, displayDriverName } from '../lib/driverUtils';
 
 const HIDDEN_LABELS = ['Possible Power Tamper', 'Battery Disconnection', 'Battery Disconnected', 'Front Panel Tamper', 'Back Panel Tamper', 'No Blue Key'];
 
@@ -41,7 +42,7 @@ function IncidentAnalysisCard({ event, index }: { event: any; index: number }) {
               </span>
             </div>
             <div style={{ fontSize: 12, color: 'var(--cd-text-muted)' }}>
-              {event.driverName || 'Unknown Driver'} · {event.regNo || event.assetId} · {event.transporter || '—'}
+              {displayDriverName(event.driverName)} · {event.regNo || event.assetId} · {event.transporter || '—'}
             </div>
           </div>
           <div style={{ fontSize: 11, color: 'var(--cd-text-muted)', textAlign: 'right', flexShrink: 0 }}>
@@ -81,7 +82,7 @@ function IncidentAnalysisCard({ event, index }: { event: any; index: number }) {
 function DriverRiskVisual({ events }: { events: any[] }) {
   const driverMap = new Map<string, { name: string; count: number; panic: number }>();
   events.forEach(e => {
-    const key = e.driverName && e.driverName !== 'N/A' ? e.driverName : null;
+    const key = isKnownDriver(e.driverName) ? e.driverName! : null;
     if (!key || HIDDEN_LABELS.includes(e.label || '')) return;
     if (!driverMap.has(key)) driverMap.set(key, { name: key, count: 0, panic: 0 });
     const d = driverMap.get(key)!;
@@ -163,7 +164,7 @@ function OpsRecommendations({ events }: { events: any[] }) {
     <div className="bpl-card">
       <div className="bpl-card-header">
         <span className="bpl-card-title">Operations Recommendations</span>
-        <span className="bpl-badge-blue">ARIA Generated</span>
+        <span className="bpl-badge-blue">BPL Analyst Generated</span>
       </div>
       <div>
         {recs.map((r, i) => (
@@ -215,7 +216,7 @@ export default function ARIAIntelligence({ tab = 'analysis' }: { tab?: ARIATab }
         <div>
           <h1 className="bpl-page-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Brain size={22} color="var(--bpl-blue)" />
-            ARIA Intelligence — {{
+            BPL Analyst Intelligence — {{
               'analysis': 'Incident Analysis',
               'root-cause': 'Root Cause',
               'risk-trends': 'Driver Risk Trends',
@@ -228,7 +229,7 @@ export default function ARIAIntelligence({ tab = 'analysis' }: { tab?: ARIATab }
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', background: 'var(--bpl-blue-soft)', borderRadius: 10, border: '1px solid rgba(0,120,212,0.2)' }}>
           <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#00d4aa', animation: 'aria-pulse 2s infinite' }} />
-          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--bpl-blue)' }}>ARIA Online</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--bpl-blue)' }}>BPL Analyst Online</span>
         </div>
       </div>
 

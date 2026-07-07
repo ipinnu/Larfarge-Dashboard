@@ -34,6 +34,7 @@ interface Props {
   authFetch: (url: string, options?: RequestInit) => Promise<Response>;
   statusFilter: string;
   onAcknowledge: (id: string) => void;
+  compact?: boolean;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -80,7 +81,7 @@ function createFlagIcon(color: string, isPanic: boolean) {
   });
 }
 
-export default function MapView({ authFetch, statusFilter, onAcknowledge }: Props) {
+export default function MapView({ authFetch, statusFilter, onAcknowledge, compact = false }: Props) {
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
@@ -94,10 +95,12 @@ export default function MapView({ authFetch, statusFilter, onAcknowledge }: Prop
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
-    mapRef.current = L.map(mapContainerRef.current, {
+    const container = mapContainerRef.current;
+
+    mapRef.current = L.map(container, {
       center: [6.5244, 3.3792],
       zoom: 10,
-      zoomControl: true,
+      zoomControl: !compact,
     });
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -134,13 +137,32 @@ export default function MapView({ authFetch, statusFilter, onAcknowledge }: Prop
 
     mapRef.current.addLayer(clusterGroupRef.current);
 
+    const syncSize = () => mapRef.current?.invalidateSize();
+    const t1 = setTimeout(syncSize, 0);
+    const t2 = setTimeout(syncSize, 200);
+    const ro = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(syncSize)
+      : null;
+    ro?.observe(container);
+
     return () => {
+      ro?.disconnect();
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clusterGroupRef.current = null;
+      markersRef.current.clear();
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
       }
     };
-  }, []);
+  }, [compact]);
+
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const t = setTimeout(() => mapRef.current?.invalidateSize(), 100);
+    return () => clearTimeout(t);
+  }, [compact, vehicles.length]);
 
   // Load vehicle data
   useEffect(() => {
@@ -275,6 +297,10 @@ export default function MapView({ authFetch, statusFilter, onAcknowledge }: Prop
     return matchesStatus && matchesSearch;
   }).length;
 
+  if (compact) {
+    return <div ref={mapContainerRef} className="bpl-live-fleet-map-embed" style={{ height: '100%', width: '100%' }} />;
+  }
+
   return (
     <div style={{ backgroundColor: 'var(--cd-surface)', borderRadius: '14px', border: '1px solid var(--cd-border)', overflow: 'hidden', boxShadow: 'var(--cd-card-shadow)' }}>
 
@@ -320,7 +346,7 @@ export default function MapView({ authFetch, statusFilter, onAcknowledge }: Prop
       </div>
 
       {/* Map Container */}
-      <div ref={mapContainerRef} style={{ height: '600px', width: '100%' }} />
+      <div ref={mapContainerRef} className={compact ? 'bpl-live-fleet-map-embed' : 'bpl-fleet-map-container'} style={compact ? undefined : { height: '600px', width: '100%' }} />
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Search, ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus, Phone } from 'lucide-react';
 import { useFleet } from '../context/FleetContext';
 import type { LogEntry } from '../context/FleetContext';
+import { isKnownDriver, displayDriverName } from '../lib/driverUtils';
 
 const HIDDEN_LABELS = ['Possible Power Tamper', 'Battery Disconnection', 'Battery Disconnected', 'Front Panel Tamper', 'Back Panel Tamper', 'No Blue Key'];
 const LABEL_KEYS = ['Harsh Braking', 'Harsh Acceleration', 'Overspeeding', 'Overspeed Tiered', 'Harsh Cornering'];
@@ -216,7 +217,8 @@ export default function DriverManagement({ tab = 'drivers' }: { tab?: DriverTab 
     filtered.forEach(e => {
       const label = e.type === 'panic' ? 'Panic' : (e.label || '');
       if (HIDDEN_LABELS.includes(label)) return;
-      const key = (e.driverName && e.driverName !== 'N/A') ? e.driverName : `Unknown (${e.assetId})`;
+      if (!isKnownDriver(e.driverName)) return;
+      const key = e.driverName!;
       if (!map.has(key)) {
         map.set(key, {
           name: key, phone: e.driverPhone || 'N/A',

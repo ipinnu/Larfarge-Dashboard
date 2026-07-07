@@ -137,10 +137,10 @@ async function fetchTomTomTrafficDensity(lat, lng, apiKey, roadType) {
   const density = ratio <= 0.45 ? 'heavy' : ratio <= 0.75 ? 'moderate' : 'light';
   const delayPct = Math.max(0, Math.round((1 - ratio) * 100));
   const description = density === 'heavy'
-    ? `Severe congestion (${Math.round(flow.currentSpeed)}/${Math.round(flow.freeFlowSpeed)} km/h)`
+    ? `Severe congestion (${Math.round(flow.currentSpeed)} km/h)`
     : density === 'moderate'
-      ? `Slow-moving traffic (${Math.round(flow.currentSpeed)}/${Math.round(flow.freeFlowSpeed)} km/h)`
-      : `Free-flowing traffic (${Math.round(flow.currentSpeed)}/${Math.round(flow.freeFlowSpeed)} km/h)`;
+      ? `Slow-moving traffic (${Math.round(flow.currentSpeed)} km/h)`
+      : `Free-flowing traffic (${Math.round(flow.currentSpeed)} km/h)`;
 
   return {
     density,

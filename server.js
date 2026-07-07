@@ -3,7 +3,7 @@ import path from 'path'
 import fs from 'fs'
 import { fileURLToPath } from 'url'
 import * as dotenv from 'dotenv'
-import { startPolling, pollOnce, clearTriggeredEvent, resetState, getWarningEvents } from './scripts/mix-test.js'
+import { startPolling, pollOnce, clearTriggeredEvent, resetState, getWarningEvents, getSessionTrips, getDriverDistanceSummary } from './scripts/mix-test.js'
 import { resolveEnvironment } from './scripts/environment-service.js'
 
 dotenv.config()
@@ -217,6 +217,29 @@ app.get('/api/environment', async (req, res) => {
   } catch {
     res.status(500).json({ error: 'Environment lookup failed' })
   }
+})
+
+// Trips — current session raw trips
+app.get('/api/trips/session', (req, res) => {
+  if (!isAuthorized(req)) return unauthorized(res)
+  res.json(getSessionTrips())
+})
+
+// Driver distance summary — strips journeys from wire payload
+app.get('/api/driver-distance', (req, res) => {
+  if (!isAuthorized(req)) return unauthorized(res)
+  const summary = getDriverDistanceSummary({ range: req.query.range?.toString() || '24h', month: req.query.month?.toString() || null })
+  const slim = { ...summary, assets: summary.assets.map(({ journeys, ...rest }) => rest) }
+  res.json(slim)
+})
+
+// Per-asset journey detail
+app.get('/api/driver-distance/journeys/:assetId', (req, res) => {
+  if (!isAuthorized(req)) return unauthorized(res)
+  const summary = getDriverDistanceSummary({ range: req.query.range?.toString() || '24h' })
+  const asset = summary.assets.find(a => a.assetId === req.params.assetId)
+  if (!asset) return res.status(404).json({ error: 'Asset not found' })
+  res.json(asset.journeys)
 })
 
 // Fuel history — returns time-series per vehicle for day/week/month

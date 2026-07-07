@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
+import { displayDriverName } from '../lib/driverUtils';
+import { displayDriverName } from '../lib/driverUtils';
 
 declare const jspdf: any;
 
@@ -18,7 +20,7 @@ const COLUMNS = [
   { header: 'Asset Name', get: (e: any) => e.assetName || 'N/A' },
   { header: 'Reg No', get: (e: any) => e.regNo || 'N/A' },
   { header: 'Transporter', get: (e: any) => e.transporter || 'N/A' },
-  { header: 'Driver', get: (e: any) => e.driverName || 'N/A' },
+  { header: 'Driver', get: (e: any) => displayDriverName(e.driverName, 'N/A') },
   { header: 'Phone', get: (e: any) => e.driverPhone || 'N/A' },
   { header: 'Event', get: (e: any) => e.label || 'Panic' },
   { header: 'Event Time', get: (e: any) => e.eventTime ? new Date(e.eventTime).toLocaleString('en-GB') : 'N/A' },
