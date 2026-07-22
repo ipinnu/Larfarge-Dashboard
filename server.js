@@ -7,11 +7,19 @@ import { startPolling, pollOnce, clearTriggeredEvent, resetState, getWarningEven
 import { resolveEnvironment } from './scripts/environment-service.js'
 import { computeConsumption } from './scripts/consumption-engine.js'
 import { computeKpi } from './scripts/kpi-engine.js'
+import { importWeekSeed } from './scripts/import-seed.js'
 
 dotenv.config()
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
+
+// Merge git-tracked week seed into runtime logs (no-op if already imported)
+try {
+  await importWeekSeed({ verbose: true })
+} catch (e) {
+  console.log('⚠️ Seed import skipped:', e?.message || e)
+}
 
 const app = express()
 const PORT = process.env.PORT || 3000

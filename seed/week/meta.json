@@ -1,0 +1,19 @@
+{
+  "createdAt": "2026-07-22T15:12:32.647Z",
+  "lookbackDays": 6,
+  "cutoff": "2026-07-16T15:12:05.374Z",
+  "source": "pack-seed-from-logs",
+  "counts": {
+    "warnings": 13239,
+    "kpi": 18870,
+    "fuel": 11020,
+    "trips": 234461
+  },
+  "skipped": {
+    "warnings": 193,
+    "kpi": 0,
+    "fuel": 0,
+    "trips": 115120
+  },
+  "tripsCompressed": true
+}

@@ -75,6 +75,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "node server.js"
+    "start": "node server.js",
+    "backfill:week": "node scripts/backfill-week.js",
+    "seed:pack": "node scripts/pack-seed-from-logs.js",
+    "seed:import": "node scripts/import-seed.js"
   }
 }

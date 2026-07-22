@@ -13,6 +13,8 @@ dist-ssr
 # Logs
 logs
 *.log
+!seed/**/*.jsonl
+!seed/**/*.gz
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
