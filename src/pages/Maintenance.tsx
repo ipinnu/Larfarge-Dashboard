@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Wrench, Clock, AlertTriangle, Plus, Calendar, Search, ChevronRight, CheckCircle } from 'lucide-react';
 import { useFleet } from '../context/FleetContext';
+import FeatureGate from '../components/FeatureGate';
 
 const DEMO_SERVICE: Record<string, { lastService: string; intervalDays: number; tech?: string; inProgress?: boolean; progress?: number }> = {
   'AAB428XC': { lastService: '2025-12-10', intervalDays: 90 },
@@ -77,6 +78,7 @@ export default function Maintenance() {
   });
 
   return (
+    <FeatureGate featureId="maintenance">
     <div>
       <div className="bpl-page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
@@ -235,6 +237,7 @@ export default function Maintenance() {
         <ScheduleModal vehicle={scheduleVehicle} onClose={() => setScheduleVehicle(null)} />
       )}
     </div>
+    </FeatureGate>
   );
 }
 

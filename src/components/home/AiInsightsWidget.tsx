@@ -11,7 +11,7 @@ export default function AiInsightsWidget() {
         <span className="bpl-card-title">AI Insights</span>
         <Link to="/aria" className="bpl-card-link">See all</Link>
       </div>
-      <div className="bpl-card-body">
+      <div className="bpl-card-body bpl-home-panel-scroll">
         {insights.map(ins => (
           <div key={ins.id} className="bpl-insight-item">
             <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{ins.title}</div>

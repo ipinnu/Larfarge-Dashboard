@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, ChevronLeft, ChevronRight, WifiOff } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, WifiOff, AlertTriangle } from 'lucide-react';
+import { cachedFetchJson, cachePeek, CACHE_KEYS, CACHE_TTL } from '../lib/apiCache';
 
 interface Warning {
   eventId: string;
@@ -114,9 +115,12 @@ const formatDate = (dateStr: string) => {
 };
 
 export default function FleetAnomalies({ statusFilter, onFilterChange, authFetch }: Props) {
-  const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
+  const [anomalies, setAnomalies] = useState<Anomaly[]>(() => {
+    const cached = cachePeek<Anomaly[]>(CACHE_KEYS.fleetData);
+    return cached ?? [];
+  });
   const [searchTerm, setSearchTerm] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !cachePeek(CACHE_KEYS.fleetData));
   const [currentPage, setCurrentPage] = useState(1);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState<string | null>(null);
@@ -163,12 +167,19 @@ export default function FleetAnomalies({ statusFilter, onFilterChange, authFetch
     warningTimers.current.set(assetId, timer);
   };
 
-  const loadData = async (active?: { current: boolean }) => {
+  const loadData = async (active?: { current: boolean }, force = false) => {
     try {
-      const res = await authFetch('/api/data');
-      if (!res.ok) throw new Error('Failed to load data.json');
-      const data = (await res.json()) as Anomaly[];
-      if (active && !active.current) return;
+      const data = await cachedFetchJson<Anomaly[]>(
+        CACHE_KEYS.fleetData,
+        CACHE_TTL.fleetData,
+        async () => {
+          const res = await authFetch('/api/data');
+          if (!res.ok) throw new Error('Failed to load data.json');
+          return res.json();
+        },
+        { force },
+      );
+      if (!data || (active && !active.current)) return;
 
       const filtered = data.map(v =>
         acknowledgedIds.current.has(v.id) ? { ...v, panic: false } : v
@@ -191,13 +202,18 @@ export default function FleetAnomalies({ statusFilter, onFilterChange, authFetch
   useEffect(() => {
     const checkStale = async () => {
       try {
-        const res = await authFetch('/api/metadata');
-        if (res.ok) {
-          const data = await res.json();
-          if (data.lastUpdate) {
-            const age = Date.now() - new Date(data.lastUpdate).getTime();
-            setIsStale(age > STALE_THRESHOLD_MS);
-          }
+        const data = await cachedFetchJson<{ lastUpdate?: string }>(
+          CACHE_KEYS.fleetMeta,
+          CACHE_TTL.fleetMeta,
+          async () => {
+            const res = await authFetch('/api/metadata');
+            if (!res.ok) return null;
+            return res.json();
+          },
+        );
+        if (data?.lastUpdate) {
+          const age = Date.now() - new Date(data.lastUpdate).getTime();
+          setIsStale(age > STALE_THRESHOLD_MS);
         }
       } catch {
         setIsStale(true);
@@ -270,7 +286,7 @@ export default function FleetAnomalies({ statusFilter, onFilterChange, authFetch
       const res = await authFetch('/api/refresh', { method: 'POST' });
       if (!res.ok) throw new Error('Refresh failed');
       await res.json();
-      await loadData();
+      await loadData(undefined, true);
     } catch (err) {
       setRefreshError(err instanceof Error ? err.message : 'Refresh failed');
     } finally {
@@ -304,11 +320,22 @@ export default function FleetAnomalies({ statusFilter, onFilterChange, authFetch
       <div>
 
         {isStale && (
-          <div style={{ backgroundColor: '#fefce8', border: '1px solid #fde047', borderRadius: '8px', padding: '12px 20px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <WifiOff style={{ width: '18px', height: '18px', color: '#ca8a04', flexShrink: 0 }} />
-            <span style={{ fontSize: '14px', color: '#854d0e', fontWeight: '500' }}>
-              ⚠️ Live data temporarily paused — will resume automatically
-            </span>
+          <div
+            title="Live data unavailable"
+            aria-label="Live data unavailable"
+            style={{
+              marginBottom: 16,
+              padding: '10px 14px',
+              borderRadius: 8,
+              border: '1px solid var(--cd-danger-border, #fecaca)',
+              background: 'var(--cd-danger-bg, #fff1f2)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 10,
+            }}
+          >
+            <WifiOff size={18} color="#CC0000" style={{ flexShrink: 0 }} />
+            <AlertTriangle size={18} color="#CC0000" style={{ flexShrink: 0 }} />
           </div>
         )}
 
@@ -321,12 +348,14 @@ export default function FleetAnomalies({ statusFilter, onFilterChange, authFetch
             <p style={{ fontSize: isMobile ? '14px' : '17px', color: 'var(--cd-text-muted)' }}>
               Lafarge fleet — Showing {filteredAnomalies.length === anomalies.length ? `${startIndex + 1}–${Math.min(endIndex, filteredAnomalies.length)} of ${filteredAnomalies.length}` : `${filteredAnomalies.length} of ${anomalies.length}`}
             </p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--cd-text-muted)', fontSize: '13px', marginTop: '10px', paddingLeft: '4px' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ width: '8px', height: '8px', borderRadius: '999px', background: isStale ? '#ca8a04' : 'var(--cd-accent)', boxShadow: isStale ? '0 0 0 4px rgba(202,138,4,0.2)' : '0 0 0 4px var(--cd-accent-soft)' }}></span>
-                {isStale ? 'Temporarily paused...' : 'Live — auto-refresh every 10s'}
-              </span>
-            </div>
+            {!isStale && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--cd-text-muted)', fontSize: '13px', marginTop: '10px', paddingLeft: '4px' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '999px', background: 'var(--cd-accent)', boxShadow: '0 0 0 4px var(--cd-accent-soft)' }} />
+                  Live — auto-refresh every 10s
+                </span>
+              </div>
+            )}
           </div>
 
           <div style={{ padding: isMobile ? '12px' : '16px', borderBottom: '1px solid var(--cd-border)', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>

@@ -1,9 +1,13 @@
 import { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-  Truck, Navigation, Clock, MapPin, ParkingCircle, WifiOff, Ban, AlertTriangle, Fuel, Route,
+  Truck, Navigation, Clock, MapPin, ParkingCircle, WifiOff, Ban, Fuel, Route,
 } from 'lucide-react';
 import { useFleet, type StatusFilter, type DistanceRange } from '../../context/FleetContext';
 import WidgetStatGraphic from './WidgetStatGraphic';
+import InfoTip from '../InfoTip';
+import { STATUS_DEFINITIONS } from '../../lib/metricDefinitions';
+import { useFuelConsumptionByDistanceRange } from '../../hooks/useFuelConsumption';
 
 export type MetricPeriod = DistanceRange;
 
@@ -14,22 +18,14 @@ const DISTANCE_PERIOD_LABELS: Record<DistanceRange, string> = {
 };
 
 const STATUS_STATS = [
-  { key: 'totalVehicles' as const, label: 'Total', filter: 'All' as StatusFilter, color: '#7c3aed', icon: Truck, tooltip: 'Total number of vehicles in the fleet' },
-  { key: 'moving' as const, label: 'Moving', filter: 'Moving' as StatusFilter, color: '#16a34a', icon: Navigation, tooltip: 'Vehicle is actively travelling above 5 km/h' },
-  { key: 'idle' as const, label: 'Idle', filter: 'Idle' as StatusFilter, color: '#d97706', icon: Clock, tooltip: 'Vehicle is idling' },
-  { key: 'stationary' as const, label: 'Stationary', filter: 'Stationary' as StatusFilter, color: '#0d9488', icon: MapPin, tooltip: 'Vehicle has been stationary for less than 1 hour' },
-  { key: 'parked' as const, label: 'Parked', filter: 'Parked' as StatusFilter, color: '#ea580c', icon: ParkingCircle, tooltip: 'Vehicle has been stationary for between 1 and 24 hours' },
-  { key: 'offline' as const, label: 'Offline', filter: 'Offline' as StatusFilter, color: '#64748b', icon: WifiOff, tooltip: 'Vehicle has not moved in over 24 hours' },
-  { key: 'inactive' as const, label: 'Non-Operational', filter: 'Inactive' as StatusFilter, color: '#2563eb', icon: Ban, tooltip: 'Vehicle has not moved in over 30 days' },
-  { key: 'panic' as const, label: 'Panic', filter: 'All' as StatusFilter, color: '#c8102e', icon: AlertTriangle, tooltip: 'Vehicle has an active panic alert', isPanic: true },
+  { key: 'totalVehicles' as const, label: 'Total', filter: 'All' as StatusFilter, color: '#7c3aed', icon: Truck, tip: STATUS_DEFINITIONS.total },
+  { key: 'moving' as const, label: 'Moving', filter: 'Moving' as StatusFilter, color: '#16a34a', icon: Navigation, tip: STATUS_DEFINITIONS.moving },
+  { key: 'idle' as const, label: 'Idle', filter: 'Idle' as StatusFilter, color: '#d97706', icon: Clock, tip: STATUS_DEFINITIONS.idle },
+  { key: 'stationary' as const, label: 'Stationary', filter: 'Stationary' as StatusFilter, color: '#0d9488', icon: MapPin, tip: STATUS_DEFINITIONS.stationary },
+  { key: 'parked' as const, label: 'Parked', filter: 'Parked' as StatusFilter, color: '#ea580c', icon: ParkingCircle, tip: STATUS_DEFINITIONS.parked },
+  { key: 'offline' as const, label: 'Offline', filter: 'Offline' as StatusFilter, color: '#64748b', icon: WifiOff, tip: STATUS_DEFINITIONS.offline },
+  { key: 'inactive' as const, label: 'Non-Operational', filter: 'Inactive' as StatusFilter, color: '#2563eb', icon: Ban, tip: STATUS_DEFINITIONS.nonOperational },
 ];
-
-/** Rough fuel display scaling until fuel consumption API is wired. */
-function fuelPeriodMult(period: DistanceRange) {
-  if (period === '24h') return 0.14;
-  if (period === 'lastMonth') return 0.9;
-  return 1;
-}
 
 interface Props {
   statusFilter: StatusFilter;
@@ -44,20 +40,20 @@ export default function StatusStatsRow({
   metricPeriod,
   onMetricPeriodChange,
 }: Props) {
-  const { metadata, totalDistanceKm, fuelSeries, driverDistance } = useFleet();
+  const navigate = useNavigate();
+  const { metadata, totalDistanceKm } = useFleet();
+  const { data: fuelData, totalLiters: tripFuelLiters, loading: fuelLoading } = useFuelConsumptionByDistanceRange(metricPeriod);
 
-  const totalFuel = useMemo(() => {
-    const baseFuel = fuelSeries.reduce((s, d) => s + d.liters, 0);
-    return Math.round(baseFuel * fuelPeriodMult(metricPeriod));
-  }, [fuelSeries, metricPeriod]);
-
-  const journeySub = driverDistance?.journeyCount != null
-    ? `${driverDistance.journeyCount} journeys`
-    : null;
+  const quarryFuelLiters = useMemo(() => {
+    if (tripFuelLiters > 0) return tripFuelLiters;
+    const assets = fuelData?.assets ?? [];
+    const periodDrop = assets.reduce((s, a) => s + (a.periodFuelLiters || 0), 0);
+    if (periodDrop > 0) return Math.round(periodDrop);
+    return tripFuelLiters;
+  }, [tripFuelLiters, fuelData]);
 
   const getValue = (key: typeof STATUS_STATS[number]['key']) => {
     if (key === 'totalVehicles') return metadata.totalVehicles;
-    if (key === 'panic') return metadata.panic ?? 0;
     return metadata[key];
   };
 
@@ -67,10 +63,8 @@ export default function StatusStatsRow({
         {STATUS_STATS.map(stat => {
           const Icon = stat.icon;
           const value = getValue(stat.key);
-          const isActive = !stat.isPanic && (
-            stat.filter === 'All' ? statusFilter === 'All' : statusFilter === stat.filter
-          );
-          const pct = !stat.isPanic && stat.filter !== 'All' && metadata.totalVehicles > 0
+          const isActive = stat.filter === 'All' ? statusFilter === 'All' : statusFilter === stat.filter;
+          const pct = stat.filter !== 'All' && metadata.totalVehicles > 0
             ? Math.round((value / metadata.totalVehicles) * 100)
             : null;
 
@@ -78,32 +72,26 @@ export default function StatusStatsRow({
             <button
               key={stat.key}
               type="button"
-              title={stat.tooltip}
               className={`bpl-card bpl-status-stat${isActive ? ' active' : ''}`}
               style={{
                 borderTopColor: stat.color,
-                cursor: stat.isPanic ? 'default' : 'pointer',
+                cursor: 'pointer',
                 background: isActive ? `${stat.color}10` : undefined,
                 outline: isActive ? `1.5px solid ${stat.color}40` : 'none',
               }}
-              onClick={() => {
-                if (!stat.isPanic) onFilterChange(stat.filter);
-              }}
+              onClick={() => onFilterChange(stat.filter)}
             >
               <div className="bpl-status-stat-inner">
                 <div className="bpl-status-stat-copy">
-                  <span className="bpl-status-stat-label">{stat.label}</span>
-                  <div
-                    className="bpl-status-stat-value"
-                    style={{
-                      color: stat.color,
-                      animation: stat.isPanic && value > 0 ? 'pulse 1.5s infinite' : 'none',
-                    }}
-                  >
+                  <span className="bpl-status-stat-label" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                    {stat.label}
+                    <InfoTip text={stat.tip} label={stat.label} />
+                  </span>
+                  <div className="bpl-status-stat-value" style={{ color: stat.color }}>
                     {value}
                   </div>
                   <div className="bpl-status-stat-sub">
-                    {pct !== null ? `${pct}% of fleet` : stat.isPanic ? 'active alerts' : 'vehicles'}
+                    {pct !== null ? `${pct}% of fleet` : 'vehicles'}
                   </div>
                 </div>
                 <WidgetStatGraphic color={stat.color} icon={Icon} />
@@ -114,12 +102,18 @@ export default function StatusStatsRow({
       </div>
 
       <div className="bpl-status-metrics-col">
-        <div className="bpl-card bpl-status-stat bpl-status-metric-card" style={{ borderTopColor: '#f97316' }}>
+        <button
+          type="button"
+          className="bpl-card bpl-status-stat bpl-status-metric-card"
+          style={{ borderTopColor: '#f97316', cursor: 'pointer', textAlign: 'left', width: '100%' }}
+          title="Open quarry fuel consumption"
+          onClick={() => navigate('/fuel/consumption')}
+        >
           <div className="bpl-status-stat-inner">
             <div className="bpl-status-stat-copy">
-              <span className="bpl-status-stat-label">Total Fuel Used</span>
+              <span className="bpl-status-stat-label">Quarry Total Fuel Used</span>
               <div className="bpl-status-stat-value" style={{ color: '#f97316' }}>
-                {totalFuel.toLocaleString()}
+                {fuelLoading && quarryFuelLiters === 0 ? '…' : quarryFuelLiters.toLocaleString()}
                 <span className="bpl-status-metric-unit">L</span>
               </div>
               <div className="bpl-status-stat-sub">
@@ -138,7 +132,7 @@ export default function StatusStatsRow({
             </div>
             <WidgetStatGraphic color="#f97316" icon={Fuel} />
           </div>
-        </div>
+        </button>
 
         <div className="bpl-card bpl-status-stat bpl-status-metric-card" style={{ borderTopColor: '#8b5cf6' }}>
           <div className="bpl-status-stat-inner">
@@ -160,11 +154,6 @@ export default function StatusStatsRow({
                     <option key={p} value={p}>{DISTANCE_PERIOD_LABELS[p]}</option>
                   ))}
                 </select>
-                {journeySub && (
-                  <span style={{ display: 'block', marginTop: 4, fontSize: 10, color: 'var(--cd-text-muted)' }}>
-                    {journeySub}
-                  </span>
-                )}
               </div>
             </div>
             <WidgetStatGraphic color="#8b5cf6" icon={Route} />

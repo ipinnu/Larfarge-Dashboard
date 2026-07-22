@@ -5,6 +5,7 @@ import fetch from "node-fetch";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { KPI_EVENT_IDS, serializeKpiLogEntry } from "./kpi-constants.js";
 
 const IDENTITY_URL = "https://identity.za.mixtelematics.com/core/connect/token";
 const API_BASE = "https://integrate.za.mixtelematics.com/api";
@@ -753,11 +754,25 @@ async function getLatestActiveEvents(token, speedByAsset = new Map()) {
     }
   }
 
+  // Handle KPI events (loaded truck, load duration, fatigue/DMS, overspeed variants)
+  const kpiEvents = parsed.filter(e => KPI_EVENT_IDS.has(e.EventTypeId));
+  if (kpiEvents.length > 0) {
+    const kpiLogPath = path.join(process.cwd(), 'kpi-events.log');
+    const kpiLines = kpiEvents
+      .map(e => serializeKpiLogEntry(e, getDriverInfo(e.DriverId)))
+      .filter(Boolean);
+    if (kpiLines.length > 0) {
+      fs.appendFileSync(kpiLogPath, kpiLines.join('\n') + '\n');
+      console.log(`📈 KPI events logged: ${kpiLines.length} (kpi-events.log)`);
+    }
+  }
+
   // Log all unknown event type IDs so we can discover new ones (e.g. Fuel Probe)
   const knownIds = new Set([
     PANIC_EVENT_TYPE_ID, IDLE_EVENT_TYPE_ID, EXCESSIVE_IDLE_EVENT_TYPE_ID,
     ...FUEL_PROBE_EVENT_IDS,
     ...Object.keys(WARNING_EVENT_TYPES),
+    ...KPI_EVENT_IDS,
   ]);
   const unknownEvents = parsed.filter(e => e.EventTypeId && !knownIds.has(e.EventTypeId));
   if (unknownEvents.length > 0) {

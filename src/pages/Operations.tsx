@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Truck, Activity, TrendingUp, DollarSign, AlertCircle, Wifi, WifiOff, Route, BarChart2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Truck, Activity, TrendingUp, DollarSign, AlertCircle, Wifi, WifiOff, Route, BarChart2, Fuel } from 'lucide-react';
 import { useFleet } from '../context/FleetContext';
-import FuelChart from '../components/FuelChart';
 
 const QUARRY_ZONES = ['lh quarry', 'quarry ewekoro', 'quarry mfamosing'];
 
@@ -284,7 +284,19 @@ function FuelMonitorSection() {
         <KPICard label="Quarry Zones" value={Object.keys(byZone).length} color="#7C3AED" sub="LH · Ewekoro · Mfamosing" />
       </div>
 
-      <FuelChart />
+      <div className="bpl-card" style={{ padding: 20, marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Fuel size={18} color="#0078D4" />
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--cd-text)' }}>Fuel monitoring & consumption</div>
+            <div style={{ fontSize: 12, color: 'var(--cd-text-muted)' }}>Live probe levels and trip fuel estimates are on the Fuel pages.</div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Link to="/fuel/monitoring" className="bpl-card-link" style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--cd-border)' }}>Monitoring</Link>
+          <Link to="/fuel/consumption" className="bpl-card-link" style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--cd-border)' }}>Consumption</Link>
+        </div>
+      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, alignItems: 'start', marginTop: 20 }}>
         {Object.entries(byZone).sort(([a], [b]) => a.localeCompare(b)).map(([zone, zVehicles]) => {

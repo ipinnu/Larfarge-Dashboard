@@ -14,6 +14,9 @@ import Safety from './pages/Safety';
 import Settings from './pages/Settings';
 import Maintenance from './pages/Maintenance';
 import Tankers from './pages/Tankers';
+import FuelMonitoring from './pages/FuelMonitoring';
+import FuelConsumption from './pages/FuelConsumption';
+import OperationalKpi from './pages/OperationalKpi';
 
 export default function App() {
   return (
@@ -24,16 +27,22 @@ export default function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/fleet" element={<FleetPage />} />
 
-            <Route path="/drivers" element={<DriverManagement tab="drivers" />} />
-            <Route path="/drivers/coaching" element={<DriverManagement tab="coaching" />} />
-            <Route path="/drivers/training" element={<DriverManagement tab="training" />} />
-            <Route path="/drivers/certifications" element={<DriverManagement tab="certifications" />} />
+            <Route path="/drivers" element={<DriverManagement />} />
+            <Route path="/drivers/*" element={<Navigate to="/drivers" replace />} />
 
             <Route path="/incidents" element={<IncidentIntelligence tab="events" />} />
-            <Route path="/incidents/analysis" element={<IncidentIntelligence tab="by-driver" />} />
+            <Route path="/incidents/analysis" element={<Navigate to="/incidents" replace />} />
             <Route path="/incidents/response" element={<IncidentIntelligence tab="patterns" />} />
 
             <Route path="/safety" element={<Safety />} />
+
+            <Route path="/kpi" element={<OperationalKpi />} />
+
+            <Route path="/fuel" element={<Navigate to="/fuel/monitoring" replace />} />
+            <Route path="/fuel/monitoring" element={<FuelMonitoring />} />
+            <Route path="/fuel/consumption" element={<FuelConsumption />} />
+            <Route path="/operations/fuel" element={<Navigate to="/fuel/monitoring" replace />} />
+            <Route path="/operations/fuel/consumption" element={<Navigate to="/fuel/consumption" replace />} />
 
             <Route path="/trips" element={<TripsPage />} />
             <Route path="/trips/dispatch" element={<DispatchPage />} />

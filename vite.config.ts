@@ -2,6 +2,8 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { pollOnce, startPolling, clearTriggeredEvent, resetState, getWarningEvents, getSessionTrips, getDriverDistanceSummary } from './scripts/mix-test.js'
 import { resolveEnvironment } from './scripts/environment-service.js'
+import { computeConsumption } from './scripts/consumption-engine.js'
+import { computeKpi } from './scripts/kpi-engine.js'
 import * as dotenv from 'dotenv'
 import fs from 'fs'
 import path from 'path'
@@ -35,7 +37,7 @@ export default defineConfig({
   server: {
     host: true,
     watch: {
-      ignored: ['**/scripts/mix-test.js', '**/public/data.json', '**/public/metadata.json', '**/public/acknowledged.json', '**/public/drivers.json', '**/public/vehicles.json', '**/events.log', '**/panic.log'],
+      ignored: ['**/scripts/mix-test.js', '**/public/data.json', '**/public/metadata.json', '**/public/acknowledged.json', '**/public/drivers.json', '**/public/vehicles.json', '**/events.log', '**/panic.log', '**/kpi-events.log'],
     },
   },
   plugins: [
@@ -178,15 +180,35 @@ export default defineConfig({
           } catch { res.statusCode = 500; res.end('Internal Server Error') }
         })
 
-        // GET /api/fuel/history?period=day|week|month
+        // GET /api/fuel/history?period=day|week|month OR ?from=YYYY-MM-DD&to=YYYY-MM-DD
         server.middlewares.use('/api/fuel/history', async (req, res) => {
           if (!isAuthorized(req)) { res.statusCode = 401; res.end('Unauthorized'); return }
           if (req.method !== 'GET') { res.statusCode = 405; res.end('Method Not Allowed'); return }
           try {
             const qs = (req.originalUrl || req.url || '').split('?')[1] || ''
-            const period = new URLSearchParams(qs).get('period') || 'day'
-            const cutoffs: Record<string, number> = { day: 86400000, week: 604800000, month: 2592000000 }
-            const cutoff = Date.now() - (cutoffs[period] || cutoffs.day)
+            const params = new URLSearchParams(qs)
+            const period = params.get('period') || 'day'
+            const fromQ = params.get('from')
+            const toQ = params.get('to')
+            const now = Date.now()
+
+            let cutoffStart: number
+            let cutoffEnd = now
+            if (fromQ && toQ) {
+              cutoffStart = new Date(fromQ).getTime()
+              const toDate = new Date(toQ)
+              toDate.setHours(23, 59, 59, 999)
+              cutoffEnd = toDate.getTime()
+              if (Number.isNaN(cutoffStart) || Number.isNaN(cutoffEnd)) {
+                res.statusCode = 400
+                res.setHeader('Content-Type', 'application/json')
+                res.end(JSON.stringify({ error: 'Invalid from/to dates' }))
+                return
+              }
+            } else {
+              const cutoffs: Record<string, number> = { day: 86400000, week: 604800000, month: 2592000000 }
+              cutoffStart = now - (cutoffs[period] || cutoffs.day)
+            }
 
             const historyPath = path.join(process.cwd(), 'fuel-history.log')
             if (!fs.existsSync(historyPath)) {
@@ -197,7 +219,10 @@ export default defineConfig({
             fs.readFileSync(historyPath, 'utf8').trim().split('\n').filter(Boolean).forEach(line => {
               try {
                 const entry = JSON.parse(line)
-                if (new Date(entry.timestamp).getTime() < cutoff) return
+                const eventType = entry.eventType || '5min_ticker'
+                if (eventType !== '5min_ticker') return
+                const ts = new Date(entry.timestamp).getTime()
+                if (ts < cutoffStart || ts > cutoffEnd) return
                 if (!seriesMap.has(entry.assetId)) seriesMap.set(entry.assetId, [])
                 seriesMap.get(entry.assetId)!.push({ time: entry.timestamp, level: Math.max(0, entry.level) })
               } catch { }
@@ -215,12 +240,54 @@ export default defineConfig({
 
             const result: any[] = []
             seriesMap.forEach((data, assetId) => {
+              data.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime())
               const info = vehicleLookup.get(assetId) || {}
-              result.push({ assetId, regNo: info.regNo || assetId, assetName: info.assetName || '', zone: info.zone || '', data })
+              result.push({
+                assetId,
+                regNo: (info.regNo || assetId).toString().trim(),
+                assetName: info.assetName || '',
+                zone: info.zone || '',
+                data,
+              })
             })
 
             res.setHeader('Content-Type', 'application/json')
             res.end(JSON.stringify(result))
+          } catch { res.statusCode = 500; res.end('Internal Server Error') }
+        })
+
+        // GET /api/fuel/consumption?period=day|week|month&site=QUARRY+EWEKORO OR ?from=&to=
+        server.middlewares.use('/api/fuel/consumption', async (req, res) => {
+          if (!isAuthorized(req)) { res.statusCode = 401; res.end('Unauthorized'); return }
+          if (req.method !== 'GET') { res.statusCode = 405; res.end('Method Not Allowed'); return }
+          try {
+            const qs = (req.originalUrl || req.url || '').split('?')[1] || ''
+            const params = new URLSearchParams(qs)
+            const period = params.get('period') || 'week'
+            const from = params.get('from')
+            const to = params.get('to')
+            const site = params.get('site')
+            const data = computeConsumption({ period, from, to, siteFilter: site })
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify(data))
+          } catch { res.statusCode = 500; res.end('Internal Server Error') }
+        })
+
+        // GET /api/kpi?period=day|week|month&scope=quarry|all OR ?from=&to=
+        server.middlewares.use('/api/kpi', async (req, res) => {
+          if (!isAuthorized(req)) { res.statusCode = 401; res.end('Unauthorized'); return }
+          if (req.method !== 'GET') { res.statusCode = 405; res.end('Method Not Allowed'); return }
+          try {
+            const qs = (req.originalUrl || req.url || '').split('?')[1] || ''
+            const params = new URLSearchParams(qs)
+            const data = computeKpi({
+              period: params.get('period') || 'week',
+              from: params.get('from'),
+              to: params.get('to'),
+              scope: params.get('scope') || 'quarry',
+            })
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify(data))
           } catch { res.statusCode = 500; res.end('Internal Server Error') }
         })
 

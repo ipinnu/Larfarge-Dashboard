@@ -1,6 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Settings as SettingsIcon, Check, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
 import { useFleet } from '../context/FleetContext';
+import {
+  DEFAULT_FLEET_SCORE_CONFIG,
+  type FleetScoreConfig,
+} from '../lib/fleetSafetyScore';
+import {
+  loadConsequenceConfig,
+  saveConsequenceConfig,
+  DEFAULT_CONSEQUENCE_CONFIG,
+  type ConsequenceScoreConfig,
+} from '../lib/consequenceScore';
 
 type Tab = 'general' | 'thresholds' | 'api' | 'roles';
 
@@ -104,68 +115,265 @@ function GeneralSettings() {
 }
 
 function ThresholdSettings() {
-  const [thresholds, setThresholds] = useState({
-    harshBrakingIntervention: 8,
-    overspeedAlert: 1,
-    fleetScoreWarning: 70,
-    fleetScoreCritical: 50,
-    panicAutoAlert: true,
-    staleDataThreshold: 60,
-  });
+  const { scoreConfig, updateScoreConfig } = useFleet();
+  const [form, setForm] = useState<FleetScoreConfig>(scoreConfig);
+  const [consequenceForm, setConsequenceForm] = useState<ConsequenceScoreConfig>(() => loadConsequenceConfig());
   const [saved, setSaved] = useState(false);
 
+  useEffect(() => { setForm(scoreConfig); }, [scoreConfig]);
+
+  const setWeight = (key: keyof FleetScoreConfig['weights'], value: number) => {
+    setForm(p => ({ ...p, weights: { ...p.weights, [key]: value } }));
+  };
+
   const save = () => {
+    updateScoreConfig(form);
+    saveConsequenceConfig(consequenceForm);
+    setConsequenceForm(loadConsequenceConfig());
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
 
+  const resetDefaults = () => {
+    setForm({
+      ...DEFAULT_FLEET_SCORE_CONFIG,
+      weights: { ...DEFAULT_FLEET_SCORE_CONFIG.weights },
+    });
+    setConsequenceForm({ ...DEFAULT_CONSEQUENCE_CONFIG });
+  };
+
   return (
-    <div className="bpl-card" style={{ padding: 24 }}>
-      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--cd-text)', marginBottom: 4, fontFamily: 'var(--cd-font-display)' }}>
-        Safety Thresholds
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div className="bpl-card" style={{ padding: 24 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--cd-text)', marginBottom: 4, fontFamily: 'var(--cd-font-display)' }}>
+          Leading fleets target (Nigeria-calibrated)
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--cd-text-muted)', marginBottom: 12, lineHeight: 1.55 }}>
+          Your Fleet Safety Score is <strong style={{ color: 'var(--cd-text)' }}>how close you are to leading fleets in similar conditions</strong>.
+          Match or beat this rate → score 100. Double the rate → score 50.
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label style={labelStyle}>Leading fleets aim for (per 100 vehicles / 30 days)</label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input
+              type="number"
+              step={1}
+              min={0.1}
+              max={2000}
+              style={{ ...fieldStyle, width: 100 }}
+              value={form.leadingRatePer100}
+              onChange={e => setForm(p => ({ ...p, leadingRatePer100: Number(e.target.value) }))}
+            />
+            <span style={{ fontSize: 12, color: 'var(--cd-text-muted)' }}>weighted IVMS points</span>
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--cd-text-muted)', marginTop: 6, lineHeight: 1.45 }}>
+            Default <strong>240</strong> — best / leading for Nigerian quarry & heavy-haul (road quality, mixed traffic,
+            Africa mining mobile-equipment risk). Stricter EU/US award rates (~8) made live MiX scores look like ~2%;
+            this scale keeps a healthy fleet around <strong>60+</strong> while still rewarding improvement toward leading.
+          </div>
+        </div>
+        <div style={{
+          fontSize: 12, color: 'var(--cd-text-muted)', lineHeight: 1.5,
+          background: 'var(--cd-surface-2)', border: '1px solid var(--cd-border)', borderRadius: 8, padding: '10px 12px',
+        }}>
+          Example: leading target <strong style={{ color: 'var(--cd-text)' }}>240</strong>, your rate is <strong style={{ color: 'var(--cd-text)' }}>400</strong>
+          → score = 100 × 240 ÷ 400 = <strong style={{ color: 'var(--cd-text)' }}>60</strong>.
+        </div>
       </div>
-      <div style={{ fontSize: 12, color: 'var(--cd-text-muted)', marginBottom: 20 }}>
-        These thresholds control when alerts are triggered and when intervention is required.
+
+      <div className="bpl-card" style={{ padding: 24 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--cd-text)', marginBottom: 4, fontFamily: 'var(--cd-font-display)' }}>
+          Fleet Safety Score — event weights
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--cd-text-muted)', marginBottom: 16, lineHeight: 1.55 }}>
+          Each incident adds these points, then we convert the total to a rate per 100 vehicles and compare it to the leading target above.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          {[
+            { label: 'Harsh Braking', key: 'harshBraking' as const, desc: 'Default 2.0' },
+            { label: 'Harsh Acceleration', key: 'harshAcceleration' as const, desc: 'Default 1.5' },
+            { label: 'Overspeeding', key: 'overspeeding' as const, desc: 'Default 1.5 — includes Overspeed Tiered' },
+            { label: 'Harsh Cornering', key: 'harshCornering' as const, desc: 'Default 1.0' },
+          ].map(f => (
+            <div key={f.key}>
+              <label style={labelStyle}>{f.label}</label>
+              <input
+                type="number"
+                step="0.1"
+                min={0}
+                max={20}
+                style={{ ...fieldStyle, width: 100 }}
+                value={form.weights[f.key]}
+                onChange={e => setWeight(f.key, Number(e.target.value))}
+              />
+              <div style={{ fontSize: 11, color: 'var(--cd-text-muted)', marginTop: 4 }}>{f.desc}</div>
+            </div>
+          ))}
+        </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
-        {[
-          { label: 'Harsh Braking Intervention Threshold', key: 'harshBrakingIntervention', unit: 'events/30 days', desc: 'FMCSA BASIC requires formal review above this threshold' },
-          { label: 'Fleet Score Warning Level', key: 'fleetScoreWarning', unit: '/100', desc: 'Amber alert when score drops below this' },
-          { label: 'Fleet Score Critical Level', key: 'fleetScoreCritical', unit: '/100', desc: 'Red alert when score drops below this' },
-          { label: 'Stale Data Threshold', key: 'staleDataThreshold', unit: 'seconds', desc: 'Show data warning if feed is older than this' },
-        ].map(f => (
-          <div key={f.key}>
-            <label style={labelStyle}>{f.label}</label>
+
+      <div className="bpl-card" style={{ padding: 24 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--cd-text)', marginBottom: 4, fontFamily: 'var(--cd-font-display)' }}>
+          Extra fleet score options
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--cd-text-muted)', marginBottom: 16 }}>
+          Optional knobs. Most sites only change the leading target and weights above.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          {[
+            { label: 'Lowest score allowed', key: 'scoreFloor' as const, unit: '/100', desc: 'Gauge never drops below this (default 0)' },
+            { label: 'Home driver card penalty / event', key: 'driverPenaltyPerEvent' as const, unit: 'pts', desc: 'Home Driver Performance strip only (default 3)' },
+            { label: 'Fleet score warning', key: 'fleetScoreWarning' as const, unit: '/100', desc: 'Amber alert threshold (default 70)' },
+            { label: 'Fleet score critical', key: 'fleetScoreCritical' as const, unit: '/100', desc: 'Red alert threshold (default 50)' },
+          ].map(f => (
+            <div key={f.key}>
+              <label style={labelStyle}>{f.label}</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input
+                  type="number"
+                  step={f.key === 'driverPenaltyPerEvent' ? 0.5 : 1}
+                  style={{ ...fieldStyle, width: 80, flexShrink: 0 }}
+                  value={form[f.key]}
+                  onChange={e => setForm(p => ({ ...p, [f.key]: Number(e.target.value) }))}
+                />
+                <span style={{ fontSize: 12, color: 'var(--cd-text-muted)' }}>{f.unit}</span>
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--cd-text-muted)', marginTop: 4 }}>{f.desc}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="bpl-card" style={{ padding: 24 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--cd-text)', marginBottom: 4, fontFamily: 'var(--cd-font-display)' }}>
+          Fleet status bands
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--cd-text-muted)', marginBottom: 16 }}>
+          Colour / label cutoffs for your % of the leading fleets target. Score at or above each value uses that band.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
+          {[
+            { label: 'Good Standing ≥', key: 'bandGood' as const, color: '#16a34a' },
+            { label: 'Needs Attention ≥', key: 'bandAttention' as const, color: '#d97706' },
+            { label: 'Below Average ≥', key: 'bandBelow' as const, color: '#e05c2a' },
+          ].map(f => (
+            <div key={f.key}>
+              <label style={{ ...labelStyle, color: f.color }}>{f.label}</label>
+              <input
+                type="number"
+                min={1}
+                max={100}
+                style={{ ...fieldStyle, width: 80 }}
+                value={form[f.key]}
+                onChange={e => setForm(p => ({ ...p, [f.key]: Number(e.target.value) }))}
+              />
+            </div>
+          ))}
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--cd-text-muted)', marginTop: 12 }}>
+          Below “Below Average” → Poor Performance
+        </div>
+      </div>
+
+      <div className="bpl-card" style={{ padding: 24 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--cd-text)', marginBottom: 4, fontFamily: 'var(--cd-font-display)' }}>
+          Driver discipline bands (Consequence Management)
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--cd-text-muted)', marginBottom: 12, lineHeight: 1.55 }}>
+          This is <strong style={{ color: 'var(--cd-text)' }}>not</strong> the Fleet Safety Score on Home.
+          It grades each driver after IVMS violations (harsh brake, overspeed, etc.) and decides Green → Amber → Yellow → Red.
+        </div>
+        <div style={{
+          fontSize: 12, color: 'var(--cd-text)', lineHeight: 1.55, marginBottom: 16,
+          background: 'var(--cd-surface-2)', border: '1px solid var(--cd-border)', borderRadius: 8, padding: '10px 12px',
+        }}>
+          <strong>How it works:</strong> every scored event costs points. Those points are divided by how far the driver drove
+          (per 100 km), so a driver with 1 event in 50 km looks worse than 1 event in 500 km.
+          <div style={{ marginTop: 8, color: 'var(--cd-text-muted)' }}>
+            Example with default 2: 34 events × −2 = −68 points. Drove 600 km → that’s 600÷100 = <strong>6</strong> blocks of 100 km → −68 ÷ 6 = <strong style={{ color: '#d97706' }}>−11.3 → Yellow</strong>.
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label style={labelStyle}>Points lost per violation</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <input
                 type="number"
-                style={{ ...fieldStyle, width: 80, flexShrink: 0 }}
-                value={(thresholds as any)[f.key]}
-                onChange={e => setThresholds(p => ({ ...p, [f.key]: Number(e.target.value) }))}
+                step={0.5}
+                min={0.5}
+                max={20}
+                style={{ ...fieldStyle, width: 80 }}
+                value={consequenceForm.penaltyPerEvent}
+                onChange={e => setConsequenceForm(p => ({ ...p, penaltyPerEvent: Number(e.target.value) }))}
               />
-              <span style={{ fontSize: 12, color: 'var(--cd-text-muted)' }}>{f.unit}</span>
+              <span style={{ fontSize: 12, color: 'var(--cd-text-muted)' }}>points deducted each time</span>
             </div>
-            <div style={{ fontSize: 11, color: 'var(--cd-text-muted)', marginTop: 4 }}>{f.desc}</div>
+            <div style={{ fontSize: 11, color: 'var(--cd-text-muted)', marginTop: 4 }}>
+              Raise this to punish violations harder. Lafarge policy default is 2.
+            </div>
           </div>
-        ))}
-      </div>
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <input
-            type="checkbox"
-            id="panicAutoAlert"
-            checked={thresholds.panicAutoAlert}
-            onChange={e => setThresholds(p => ({ ...p, panicAutoAlert: e.target.checked }))}
-            style={{ width: 16, height: 16, cursor: 'pointer' }}
-          />
-          <label htmlFor="panicAutoAlert" style={{ fontSize: 13, color: 'var(--cd-text)', cursor: 'pointer', fontWeight: 500 }}>
-            Auto-surface panic alerts to all active users immediately
-          </label>
+          <div>
+            <label style={{ ...labelStyle, color: '#f59e0b' }}>Warning band starts at</label>
+            <input
+              type="number"
+              step={0.1}
+              style={{ ...fieldStyle, width: 80 }}
+              value={consequenceForm.amberStart}
+              onChange={e => setConsequenceForm(p => ({ ...p, amberStart: Number(e.target.value) }))}
+            />
+            <div style={{ fontSize: 11, color: 'var(--cd-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+              Driver score ≤ this → <strong style={{ color: '#f59e0b' }}>Amber</strong> (written warning / retraining).
+              Above this (and still negative) stays Green-ish / mild. Default −2.
+            </div>
+          </div>
+          <div>
+            <label style={{ ...labelStyle, color: '#d97706' }}>Suspension band starts at</label>
+            <input
+              type="number"
+              step={0.1}
+              style={{ ...fieldStyle, width: 80 }}
+              value={consequenceForm.yellowStart}
+              onChange={e => setConsequenceForm(p => ({ ...p, yellowStart: Number(e.target.value) }))}
+            />
+            <div style={{ fontSize: 11, color: 'var(--cd-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+              Score ≤ this → <strong style={{ color: '#d97706' }}>Yellow</strong> (3-day → 1-week suspension). Default −6.
+            </div>
+          </div>
+          <div>
+            <label style={{ ...labelStyle, color: '#CC0000' }}>Severe band starts at</label>
+            <input
+              type="number"
+              step={0.1}
+              style={{ ...fieldStyle, width: 80 }}
+              value={consequenceForm.redStart}
+              onChange={e => setConsequenceForm(p => ({ ...p, redStart: Number(e.target.value) }))}
+            />
+            <div style={{ fontSize: 11, color: 'var(--cd-text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+              Score ≤ this → <strong style={{ color: '#CC0000' }}>Red</strong> (2-week suspension → termination). Default −12.
+            </div>
+          </div>
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--cd-text-muted)', marginTop: 14, lineHeight: 1.45 }}>
+          Scores are negative numbers: 0 is perfect, −12 is much worse than −2.
+          Move a band number closer to 0 (e.g. −4 instead of −6) to make that tier kick in sooner.
         </div>
       </div>
-      <button className="bpl-btn-primary" onClick={save}>
-        {saved ? <><Check size={14} /> Saved</> : 'Save Thresholds'}
-      </button>
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+        <button
+          type="button"
+          onClick={resetDefaults}
+          style={{
+            padding: '8px 14px', borderRadius: 8, fontSize: 13, cursor: 'pointer',
+            border: '1px solid var(--cd-border)', background: 'var(--cd-surface)', color: 'var(--cd-text-muted)',
+          }}
+        >
+          Reset defaults
+        </button>
+        <button className="bpl-btn-primary" onClick={save}>
+          {saved ? <><Check size={14} /> Saved — scores updated</> : 'Save Thresholds'}
+        </button>
+      </div>
     </div>
   );
 }
@@ -202,10 +410,6 @@ function APISettings() {
         </div>
       ))}
 
-      <div style={{ padding: '12px 16px', background: 'var(--bpl-blue-soft)', border: '1px solid rgba(0,120,212,0.2)', borderRadius: 10, fontSize: 12, color: 'var(--cd-text-muted)' }}>
-        <AlertCircle size={13} style={{ display: 'inline', marginRight: 6, color: 'var(--bpl-blue)' }} />
-        API keys are stored as environment variables (.env). Edit the .env file in your project root and restart the server to update keys.
-      </div>
     </div>
   );
 }
@@ -247,16 +451,45 @@ function RoleSettings() {
 export default function Settings({ tab }: { tab: Tab }) {
   const TAB_TITLES: Record<Tab, string> = {
     general: 'General',
-    thresholds: 'Alert Thresholds',
+    thresholds: 'Safety Score',
     api: 'API Connections',
     roles: 'Roles & Permissions',
   };
+
+  const tabs: { id: Tab; path: string; label: string }[] = [
+    { id: 'general', path: '/settings/general', label: 'General' },
+    { id: 'thresholds', path: '/settings/thresholds', label: 'Safety Score' },
+    { id: 'api', path: '/settings/api', label: 'API' },
+    { id: 'roles', path: '/settings/roles', label: 'Roles' },
+  ];
 
   return (
     <div>
       <div className="bpl-page-header">
         <h1 className="bpl-page-title">Settings — {TAB_TITLES[tab]}</h1>
         <p className="bpl-page-subtitle">Platform configuration, API connections, and user management</p>
+      </div>
+
+      <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
+        {tabs.map(t => (
+          <Link
+            key={t.id}
+            to={t.path}
+            style={{
+              padding: '7px 14px',
+              borderRadius: 8,
+              fontSize: 13,
+              textDecoration: 'none',
+              border: '1px solid',
+              borderColor: tab === t.id ? 'var(--bpl-blue)' : 'var(--cd-border)',
+              background: tab === t.id ? 'var(--bpl-blue-soft)' : 'var(--cd-surface)',
+              color: tab === t.id ? 'var(--bpl-blue)' : 'var(--cd-text-muted)',
+              fontWeight: tab === t.id ? 600 : 400,
+            }}
+          >
+            {t.label}
+          </Link>
+        ))}
       </div>
 
       {tab === 'general' && <GeneralSettings />}

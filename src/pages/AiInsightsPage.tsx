@@ -1,4 +1,5 @@
 import { Brain, Sparkles } from 'lucide-react';
+import FeatureGate from '../components/FeatureGate';
 import SafeIQFeed from '../components/SafeIQFeed';
 import { useFleet } from '../context/FleetContext';
 
@@ -6,6 +7,7 @@ export default function AiInsightsPage() {
   const { notifications, openNotification, dismissNotification, insights } = useFleet();
 
   return (
+    <FeatureGate featureId="aria">
     <div>
       <div className="bpl-page-header">
         <h1 className="bpl-page-title">AI Insights</h1>
@@ -56,6 +58,7 @@ export default function AiInsightsPage() {
         </section>
       </div>
     </div>
+    </FeatureGate>
   );
 }
 

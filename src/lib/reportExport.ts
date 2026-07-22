@@ -26,7 +26,7 @@ const COLUMNS = [
   { header: 'Transporter', get: (e: LogEntry) => e.transporter || 'N/A' },
   { header: 'Driver', get: (e: LogEntry) => displayDriverName(e.driverName, 'N/A') },
   { header: 'Phone', get: (e: LogEntry) => e.driverPhone || 'N/A' },
-  { header: 'Event', get: (e: LogEntry) => e.label || 'Panic' },
+  { header: 'Event', get: (e: LogEntry) => e.label || 'Unknown' },
   { header: 'Event Time', get: (e: LogEntry) => (e.eventTime ? new Date(e.eventTime).toLocaleString('en-GB') : 'N/A') },
   {
     header: 'Location',

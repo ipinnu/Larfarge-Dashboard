@@ -1,12 +1,22 @@
-import { useState, useMemo } from 'react';
-import { Search, AlertTriangle } from 'lucide-react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { Search, ClipboardCheck } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, BarChart, Bar, Legend,
+  ResponsiveContainer, Legend,
 } from 'recharts';
-import { useFleet } from '../context/FleetContext';
-import type { LogEntry } from '../context/FleetContext';
-import { isKnownDriver, displayDriverName } from '../lib/driverUtils';
+import { useFleet, authFetch } from '../context/FleetContext';
+import type { LogEntry, TripDriver } from '../context/FleetContext';
+import { isKnownDriver, displayDriverName, isActiveDriver, isActiveDriverId } from '../lib/driverUtils';
+import {
+  buildDriverConsequenceCard,
+  loadConsequenceOccurrences,
+  logConsequenceResponse,
+  nextOccurrenceIndex,
+  getOccurrenceCount,
+  type OccurrenceStore,
+  type ConsequenceCategory,
+} from '../lib/consequenceScore';
 
 type Tab = 'events' | 'by-driver' | 'trends' | 'patterns';
 type DateRange = 'today' | '7days' | '30days' | 'alltime';
@@ -16,7 +26,6 @@ const HIDDEN_LABELS = ['Possible Power Tamper', 'Battery Disconnection', 'Batter
 const EVENT_FILTERS: EventFilter[] = ['All', 'Harsh Braking', 'Harsh Acceleration', 'Overspeeding', 'Overspeed Tiered', 'Harsh Cornering'];
 
 const EVENT_COLORS: Record<string, string> = {
-  'Panic': '#CC0000',
   'Harsh Braking': '#0d9488',
   'Harsh Acceleration': '#0078D4',
   'Overspeeding': '#9333ea',
@@ -25,7 +34,6 @@ const EVENT_COLORS: Record<string, string> = {
 };
 
 function getLabel(e: LogEntry) {
-  if (e.type === 'panic') return 'Panic';
   return e.label || 'Unknown';
 }
 
@@ -52,8 +60,14 @@ function formatTime(iso: string) {
 }
 
 function EventsTab({ events }: { events: LogEntry[] }) {
+  const [searchParams] = useSearchParams();
+  const filterParam = searchParams.get('filter');
+  const initialFilter: EventFilter =
+    filterParam && (EVENT_FILTERS as string[]).includes(filterParam)
+      ? (filterParam as EventFilter)
+      : 'All';
   const [search, setSearch] = useState('');
-  const [eventFilter, setEventFilter] = useState<EventFilter>('All');
+  const [eventFilter, setEventFilter] = useState<EventFilter>(initialFilter);
 
   const filtered = events.filter(e => {
     if (e.type === 'panic') return false;
@@ -168,6 +182,7 @@ function ByDriverTab({ events }: { events: LogEntry[] }) {
   const driverMap = useMemo(() => {
     const m = new Map<string, { name: string; counts: Record<string, number>; total: number }>();
     events.forEach(e => {
+      if (e.type === 'panic') return;
       const label = getLabel(e);
       if (HIDDEN_LABELS.includes(label)) return;
       if (!isKnownDriver(e.driverName)) return;
@@ -175,7 +190,7 @@ function ByDriverTab({ events }: { events: LogEntry[] }) {
       if (!m.has(key)) m.set(key, { name: key, counts: {}, total: 0 });
       const d = m.get(key)!;
       d.counts[label] = (d.counts[label] || 0) + 1;
-      if (label !== 'Panic') d.total++;
+      d.total++;
     });
     return Array.from(m.values()).sort((a, b) => b.total - a.total);
   }, [events]);
@@ -191,7 +206,6 @@ function ByDriverTab({ events }: { events: LogEntry[] }) {
             <th>Overspeeding</th>
             <th>Harsh Accel.</th>
             <th>Cornering</th>
-            <th>Panic</th>
             <th>Total</th>
             <th>Risk</th>
           </tr>
@@ -210,9 +224,6 @@ function ByDriverTab({ events }: { events: LogEntry[] }) {
                 <td>{(d.counts['Overspeeding'] || 0) + (d.counts['Overspeed Tiered'] || 0)}</td>
                 <td>{d.counts['Harsh Acceleration'] || 0}</td>
                 <td>{d.counts['Harsh Cornering'] || 0}</td>
-                <td style={{ color: '#CC0000', fontWeight: (d.counts['Panic'] || 0) > 0 ? 700 : 400 }}>
-                  {d.counts['Panic'] || 0}
-                </td>
                 <td style={{ fontWeight: 700 }}>{d.total}</td>
                 <td>
                   <span style={{
@@ -235,13 +246,13 @@ function TrendsTab({ events }: { events: LogEntry[] }) {
   const trendData = useMemo(() => {
     const days: Record<string, Record<string, number>> = {};
     events.forEach(e => {
+      if (e.type === 'panic') return;
       const label = getLabel(e);
       if (HIDDEN_LABELS.includes(label)) return;
       const date = new Date(e.eventTime || e.timestamp)
         .toLocaleDateString('en-GB', { timeZone: 'Africa/Lagos', day: '2-digit', month: 'short' });
-      if (!days[date]) days[date] = { 'Panic': 0, 'Harsh Braking': 0, 'Overspeeding': 0, 'Harsh Accel.': 0 };
-      if (e.type === 'panic') days[date]['Panic']++;
-      else if (label === 'Harsh Braking') days[date]['Harsh Braking']++;
+      if (!days[date]) days[date] = { 'Harsh Braking': 0, 'Overspeeding': 0, 'Harsh Accel.': 0 };
+      if (label === 'Harsh Braking') days[date]['Harsh Braking']++;
       else if (label === 'Overspeeding' || label === 'Overspeed Tiered') days[date]['Overspeeding']++;
       else if (label === 'Harsh Acceleration') days[date]['Harsh Accel.']++;
     });
@@ -270,7 +281,6 @@ function TrendsTab({ events }: { events: LogEntry[] }) {
             <Line type="monotone" dataKey="Harsh Braking" stroke="#CC0000" strokeWidth={2} dot={false} />
             <Line type="monotone" dataKey="Overspeeding" stroke="#9333ea" strokeWidth={2} dot={false} />
             <Line type="monotone" dataKey="Harsh Accel." stroke="#0078D4" strokeWidth={2} dot={false} />
-            <Line type="monotone" dataKey="Panic" stroke="#CC0000" strokeWidth={2} dot={false} strokeDasharray="4 2" />
           </LineChart>
         </ResponsiveContainer>
       )}
@@ -279,77 +289,178 @@ function TrendsTab({ events }: { events: LogEntry[] }) {
 }
 
 function PatternsTab({ events }: { events: LogEntry[] }) {
-  const patterns = useMemo(() => {
-    const driverCounts = new Map<string, { name: string; count: number; labels: string[] }>();
+  const [tripDrivers, setTripDrivers] = useState<TripDriver[]>([]);
+  const [occurrences, setOccurrences] = useState<OccurrenceStore>(() => loadConsequenceOccurrences());
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [cur, last] = await Promise.all([
+          authFetch('/api/driver-distance?range=currentMonth'),
+          authFetch('/api/driver-distance?range=lastMonth'),
+        ]);
+        const map = new Map<string, TripDriver>();
+        for (const res of [cur, last]) {
+          if (!res.ok) continue;
+          const data = await res.json();
+          for (const d of (data.drivers || []) as TripDriver[]) {
+            if (!isActiveDriver(d.driverName, d.driverId)) continue;
+            const key = d.driverId || d.driverName;
+            if (!key) continue;
+            const prev = map.get(key);
+            if (!prev) map.set(key, { ...d });
+            else {
+              prev.totalDistanceKm += d.totalDistanceKm;
+              prev.journeyCount += d.journeyCount;
+              prev.vehicles = Array.from(new Set([...prev.vehicles, ...d.vehicles]));
+            }
+          }
+        }
+        if (!cancelled) setTripDrivers(Array.from(map.values()));
+      } catch { /* keep empty */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const distanceByKey = useMemo(() => {
+    const m = new Map<string, number>();
+    tripDrivers.forEach(t => {
+      const key = (t.driverId && isActiveDriverId(t.driverId)) ? t.driverId : t.driverName;
+      m.set(key, (m.get(key) || 0) + (t.totalDistanceKm || 0));
+    });
+    return m;
+  }, [tripDrivers]);
+
+  const trackingRows = useMemo(() => {
+    const byDriver = new Map<string, { key: string; name: string; events: LogEntry[] }>();
+
     events.forEach(e => {
+      if (e.type === 'panic') return;
       const label = getLabel(e);
       if (HIDDEN_LABELS.includes(label) || label === 'Unknown') return;
-      const key = isKnownDriver(e.driverName) ? e.driverName! : null;
-      if (!key) return;
-      if (!driverCounts.has(key)) driverCounts.set(key, { name: key, count: 0, labels: [] });
-      const d = driverCounts.get(key)!;
-      d.count++;
-      if (!d.labels.includes(label)) d.labels.push(label);
+      if (!isActiveDriver(e.driverName, e.driverId)) return;
+      const key = (e.driverId && isActiveDriverId(e.driverId)) ? e.driverId : e.driverName!;
+      if (!byDriver.has(key)) byDriver.set(key, { key, name: e.driverName!, events: [] });
+      byDriver.get(key)!.events.push(e);
     });
-    return Array.from(driverCounts.values())
-      .filter(d => d.count >= 5)
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
-  }, [events]);
+
+    // Also include trip drivers with distance even if no events in range (won't show — Green filtered out)
+    tripDrivers.forEach(t => {
+      const key = (t.driverId && isActiveDriverId(t.driverId)) ? t.driverId : t.driverName;
+      if (!byDriver.has(key)) byDriver.set(key, { key, name: t.driverName, events: [] });
+    });
+
+    return Array.from(byDriver.values())
+      .map(row => {
+        const distanceKm = distanceByKey.get(row.key) || 0;
+        const preliminary = buildDriverConsequenceCard({ events: row.events, distanceKm });
+        const occurrenceIndex = nextOccurrenceIndex(occurrences, row.key, preliminary.category);
+        const consequence = buildDriverConsequenceCard({
+          events: row.events,
+          distanceKm,
+          occurrenceIndex,
+        });
+        const loggedCount = getOccurrenceCount(occurrences, row.key, consequence.category);
+        return { ...row, distanceKm, consequence, loggedCount };
+      })
+      .filter(r => r.consequence.category !== 'Green')
+      .sort((a, b) => a.consequence.displayScore - b.consequence.displayScore);
+  }, [events, tripDrivers, distanceByKey, occurrences]);
+
+  const handleLogResponse = useCallback((driverKey: string, category: ConsequenceCategory) => {
+    setOccurrences(prev => logConsequenceResponse(prev, driverKey, category));
+  }, []);
 
   return (
     <div>
       <div className="bpl-card" style={{ padding: 20, marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-          <AlertTriangle size={16} color="#d97706" />
+          <ClipboardCheck size={16} color="#0078D4" />
           <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--cd-text)', fontFamily: 'var(--cd-font-display)' }}>
-            Recurring Pattern Detection
+            Consequence Response Tracking
           </span>
         </div>
         <p style={{ fontSize: 13, color: 'var(--cd-text-muted)', margin: 0 }}>
-          Drivers with 5+ incidents. FMCSA BASIC requires formal intervention at 8+ harsh braking events per 30 days.
+          Amber / Yellow / Red drivers by Consequence Management score (penalty points ÷ km/100).
+          Log a response to advance 1st → 2nd occurrence consequences.
         </p>
       </div>
 
-      {patterns.length === 0 ? (
+      {trackingRows.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '40px', color: 'var(--cd-text-muted)', fontSize: 13 }}>
-          No recurring patterns detected in current data
+          No Amber, Yellow, or Red drivers in this date range
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {patterns.map(p => {
-            const level = p.count >= 10 ? 'CRITICAL' : p.count >= 7 ? 'HIGH' : 'ELEVATED';
-            const color = level === 'CRITICAL' ? '#CC0000' : level === 'HIGH' ? '#d97706' : '#f59e0b';
+          {trackingRows.map(row => {
+            const { consequence } = row;
+            const color = consequence.categoryColor;
             return (
-              <div key={p.name} className="bpl-card" style={{ padding: '16px 20px', borderLeft: `4px solid ${color}` }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div>
-                    <div style={{ fontWeight: 600, color: 'var(--cd-text)', marginBottom: 4 }}>{p.name}</div>
+              <div key={row.key} className="bpl-card" style={{ padding: '16px 20px', borderLeft: `4px solid ${color}` }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: 180 }}>
+                    <div style={{ fontWeight: 600, color: 'var(--cd-text)', marginBottom: 4 }}>{row.name}</div>
                     <div style={{ fontSize: 12, color: 'var(--cd-text-muted)' }}>
-                      {p.labels.join(' · ')}
+                      {consequence.counts.eventCount} scored events · {Math.round(row.distanceKm).toLocaleString()} km
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                    <span style={{ fontSize: 22, fontWeight: 700, color, fontFamily: 'var(--cd-font-display)' }}>
-                      {p.count}
-                    </span>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 22, fontWeight: 700, color, fontFamily: 'var(--cd-font-display)', lineHeight: 1 }}>
+                        {consequence.displayScore}
+                      </div>
+                      <div style={{ fontSize: 10, color: 'var(--cd-text-muted)' }}>/100</div>
+                    </div>
                     <span style={{
                       padding: '3px 8px', borderRadius: 6, fontSize: 10, fontWeight: 700,
                       background: `${color}15`, color,
                     }}>
-                      {level}
+                      {consequence.categoryLabel}
                     </span>
                   </div>
                 </div>
-                {p.count >= 8 && (
-                  <div style={{
-                    marginTop: 10, padding: '8px 12px', borderRadius: 8,
-                    background: 'rgba(204,0,0,0.06)', border: '1px solid rgba(204,0,0,0.15)',
-                    fontSize: 12, color: '#CC0000',
-                  }}>
-                    ⚠ FMCSA BASIC intervention threshold exceeded. Formal review required before next assignment.
+
+                <div style={{
+                  display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+                  gap: 10, marginTop: 12,
+                }}>
+                  {[
+                    { label: 'Penalty points', value: consequence.penaltyPoints },
+                    { label: 'Score / 100 km', value: consequence.driverScore.toFixed(1) },
+                    { label: 'Occurrences logged', value: row.loggedCount },
+                  ].map(s => (
+                    <div key={s.label} style={{
+                      padding: '8px 10px', borderRadius: 8, background: 'var(--cd-surface-2)',
+                      border: '1px solid var(--cd-border)',
+                    }}>
+                      <div style={{ fontSize: 10, color: 'var(--cd-text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>{s.label}</div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--cd-text)', marginTop: 2 }}>{s.value}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{
+                  marginTop: 12, padding: '10px 12px', borderRadius: 8,
+                  background: `${color}10`, border: `1px solid ${color}25`,
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+                }}>
+                  <div style={{ fontSize: 12, color: 'var(--cd-text)', flex: 1 }}>
+                    <span style={{ fontWeight: 700, color }}>Recommended · {consequence.occurrenceIndex === 1 ? '1st' : '2nd+'} occurrence: </span>
+                    {consequence.recommendedConsequence}
                   </div>
-                )}
+                  <button
+                    type="button"
+                    onClick={() => handleLogResponse(row.key, consequence.category)}
+                    style={{
+                      padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                      border: `1px solid ${color}50`, background: color, color: '#fff', flexShrink: 0,
+                    }}
+                  >
+                    Log response
+                  </button>
+                </div>
               </div>
             );
           })}
@@ -369,7 +480,7 @@ export default function IncidentIntelligence({ tab }: { tab: Tab }) {
     'events': 'Event Explorer',
     'by-driver': 'By Driver',
     'trends': 'Trends',
-    'patterns': 'Pattern Detection',
+    'patterns': 'Response Tracking',
   };
 
   return (
@@ -400,13 +511,12 @@ export default function IncidentIntelligence({ tab }: { tab: Tab }) {
       </div>
 
       {/* Summary KPIs */}
-      <div className="bpl-kpi-grid" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
+      <div className="bpl-kpi-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
         {[
-          { label: 'Total Events', value: filtered.filter(e => !HIDDEN_LABELS.includes(getLabel(e))).length, color: 'var(--cd-text)' },
+          { label: 'Total Events', value: filtered.filter(e => e.type !== 'panic' && !HIDDEN_LABELS.includes(getLabel(e))).length, color: 'var(--cd-text)' },
           { label: 'Harsh Braking', value: filtered.filter(e => e.label === 'Harsh Braking').length, color: '#CC0000' },
           { label: 'Overspeeding', value: filtered.filter(e => e.label?.includes('Overspeed')).length, color: '#9333ea' },
           { label: 'Harsh Accel.', value: filtered.filter(e => e.label === 'Harsh Acceleration').length, color: '#0078D4' },
-          { label: 'Panic Alerts', value: filtered.filter(e => e.type === 'panic').length, color: '#CC0000' },
         ].map(s => (
           <div key={s.label} className="bpl-kpi-card">
             <div className="bpl-kpi-label">{s.label}</div>

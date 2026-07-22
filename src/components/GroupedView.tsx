@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Search, ChevronDown, ChevronUp, AlertOctagon, WifiOff, MapPin } from 'lucide-react';
+import { Search, ChevronDown, ChevronUp, WifiOff, MapPin } from 'lucide-react';
+import { cachedFetchJson, cachePeek, CACHE_KEYS, CACHE_TTL } from '../lib/apiCache';
 
 interface Warning { eventId: string; label: string; timestamp: string; eventTime: string; }
 
@@ -103,26 +104,25 @@ function StatusChips({ vehicles }: { vehicles: Vehicle[] }) {
 
 function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
   const s = STATUS[vehicle.status] ?? STATUS['Offline'];
-  const isPanic = vehicle.panic;
   const uniqueWarnings = [...new Set((vehicle.warnings ?? []).map(w => w.label))];
   const address = vehicle.position?.address && vehicle.position.address !== 'Unknown'
     ? vehicle.position.address : null;
 
   return (
-    <div className={`gv-card${isPanic ? ' gv-card-panic' : ''}`}>
+    <div className="gv-card">
       {/* Status row */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '10px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span style={{
             width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0,
-            background: isPanic ? '#ef4444' : s.dot,
-            boxShadow: `0 0 0 2px ${isPanic ? 'rgba(239,68,68,0.2)' : s.bg}`,
+            background: s.dot,
+            boxShadow: `0 0 0 2px ${s.bg}`,
           }} />
           <span style={{
-            fontSize: '11px', fontWeight: '600', color: isPanic ? '#ef4444' : s.color,
+            fontSize: '11px', fontWeight: '600', color: s.color,
             letterSpacing: '0.03em',
           }}>
-            {isPanic ? 'PANIC' : s.label}
+            {s.label}
           </span>
         </div>
         <span style={{
@@ -135,7 +135,6 @@ function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
 
       {/* Reg number */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '3px' }}>
-        {isPanic && <AlertOctagon size={13} style={{ color: '#ef4444', flexShrink: 0 }} />}
         <span style={{
           fontSize: '16px', fontWeight: '700', color: 'var(--cd-text)',
           fontFamily: 'var(--cd-font-display)', letterSpacing: '-0.01em',
@@ -202,14 +201,13 @@ interface ZoneSectionProps {
 
 function ZoneSection({ siteName, vehicles, startOpen }: ZoneSectionProps) {
   const [open, setOpen] = useState(startOpen);
-  const hasPanic = vehicles.some(v => v.panic);
 
   useEffect(() => { setOpen(startOpen); }, [startOpen]);
 
   return (
     <div className="gv-zone">
       <button
-        className={`gv-zone-header${hasPanic ? ' gv-zone-header-panic' : ''}`}
+        className="gv-zone-header"
         onClick={() => setOpen(o => !o)}
       >
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -222,23 +220,12 @@ function ZoneSection({ siteName, vehicles, startOpen }: ZoneSectionProps) {
             </span>
             <span style={{
               fontSize: '11px', fontWeight: '600', padding: '2px 9px', borderRadius: '999px',
-              background: hasPanic ? 'rgba(239,68,68,0.12)' : 'rgba(128,128,128,0.1)',
-              color: hasPanic ? '#ef4444' : 'var(--cd-text-muted)',
-              border: hasPanic ? '1px solid rgba(239,68,68,0.25)' : '1px solid rgba(128,128,128,0.12)',
+              background: 'rgba(128,128,128,0.1)',
+              color: 'var(--cd-text-muted)',
+              border: '1px solid rgba(128,128,128,0.12)',
             }}>
               {vehicles.length} vehicle{vehicles.length !== 1 ? 's' : ''}
             </span>
-            {hasPanic && (
-              <span style={{
-                display: 'flex', alignItems: 'center', gap: '4px',
-                fontSize: '11px', fontWeight: '700', padding: '2px 9px', borderRadius: '999px',
-                background: 'rgba(239,68,68,0.12)', color: '#ef4444',
-                border: '1px solid rgba(239,68,68,0.3)',
-              }}>
-                <AlertOctagon size={10} />
-                {vehicles.filter(v => v.panic).length} panic
-              </span>
-            )}
           </div>
           <StatusChips vehicles={vehicles} />
         </div>
@@ -267,7 +254,6 @@ function GroupSection({ groupName, siteGroups, startOpen }: GroupSectionProps) {
   const color = GROUP_COLORS[groupName] ?? GROUP_COLORS.Other;
   const total = siteGroups.reduce((n, [, vs]) => n + vs.length, 0);
   const allVehicles = siteGroups.flatMap(([, vs]) => vs);
-  const hasPanic = allVehicles.some(v => v.panic);
 
   useEffect(() => { setOpen(startOpen); }, [startOpen]);
 
@@ -289,11 +275,6 @@ function GroupSection({ groupName, siteGroups, startOpen }: GroupSectionProps) {
         <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--cd-text)', fontFamily: 'var(--cd-font-display)', flex: 1 }}>
           {groupName}
         </span>
-        {hasPanic && (
-          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 999, background: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)', display: 'flex', alignItems: 'center', gap: 3 }}>
-            <AlertOctagon size={9} /> {allVehicles.filter(v => v.panic).length} panic
-          </span>
-        )}
         <StatusChips vehicles={allVehicles} />
         <span style={{ fontSize: 11, fontWeight: 600, color, marginLeft: 4, whiteSpace: 'nowrap' }}>
           {total} vehicle{total !== 1 ? 's' : ''}
@@ -319,8 +300,10 @@ function GroupSection({ groupName, siteGroups, startOpen }: GroupSectionProps) {
 }
 
 export default function GroupedView({ statusFilter, authFetch }: Props) {
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [vehicles, setVehicles] = useState<Vehicle[]>(() =>
+    cachePeek<Vehicle[]>(CACHE_KEYS.fleetData) ?? [],
+  );
+  const [loading, setLoading] = useState(() => !cachePeek(CACHE_KEYS.fleetData));
   const [isStale, setIsStale] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedGroup, setSelectedGroup] = useState<string>('All');
@@ -351,9 +334,16 @@ export default function GroupedView({ statusFilter, authFetch }: Props) {
 
   const fetchData = async () => {
     try {
-      const res = await authFetch('/api/data');
-      if (!res.ok) return;
-      const fresh: Vehicle[] = await res.json();
+      const fresh = await cachedFetchJson<Vehicle[]>(
+        CACHE_KEYS.fleetData,
+        CACHE_TTL.fleetData,
+        async () => {
+          const res = await authFetch('/api/data');
+          if (!res.ok) return null;
+          return res.json();
+        },
+      );
+      if (!fresh) return;
       lastSuccess.current = Date.now();
       setIsStale(false);
       setVehicles(prev => {
@@ -388,15 +378,12 @@ export default function GroupedView({ statusFilter, authFetch }: Props) {
   const sortSites = (entries: [string, Vehicle[]][]): [string, Vehicle[]][] => {
     entries.forEach(([, vs], i) => {
       entries[i][1] = [...vs].sort((a, b) => {
-        if (a.panic !== b.panic) return a.panic ? -1 : 1;
         const aw = a.warnings?.length ?? 0, bw = b.warnings?.length ?? 0;
         if (aw !== bw) return bw - aw;
         return STATUS_PRIORITY[b.status] - STATUS_PRIORITY[a.status];
       });
     });
     return entries.sort(([, a], [, b]) => {
-      const ap = a.filter(v => v.panic).length, bp = b.filter(v => v.panic).length;
-      if (ap !== bp) return bp - ap;
       const aw = a.filter(v => v.warnings?.length).length, bw = b.filter(v => v.warnings?.length).length;
       if (aw !== bw) return bw - aw;
       return b.length - a.length;

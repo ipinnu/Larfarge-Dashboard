@@ -21,7 +21,6 @@ import { displayDriverName, isKnownDriver } from '../lib/driverUtils';
 
 interface TrendDay {
   date: string;
-  Panic: number;
   'Harsh Braking': number;
   'Harsh Acceleration': number;
   Overspeeding: number;
@@ -34,7 +33,6 @@ type DateRange = 'today' | '7days' | '30days' | 'custom';
 type ViewMode = 'events' | 'trends';
 
 const EVENT_TYPES = [
-  'Panic',
   'Harsh Braking',
   'Harsh Acceleration',
   'Overspeeding',
@@ -53,7 +51,6 @@ const HIDDEN_LABELS = [
 
 const EVENT_COLORS: Record<string, string> = {
   Total: '#0f172a',
-  Panic: '#c8102e',
   'Harsh Braking': '#0d9488',
   'Harsh Acceleration': '#2563eb',
   Overspeeding: '#9333ea',
@@ -102,13 +99,12 @@ function formatTime(iso: string) {
 }
 
 function eventLabel(entry: LogEntry) {
-  return entry.label || (entry.type === 'panic' ? 'Panic' : 'Unknown');
+  return entry.label || 'Unknown';
 }
 
 function matchesEventType(entry: LogEntry, selected: Set<string>) {
   if (selected.size === 0) return false;
-  const label = eventLabel(entry);
-  return selected.has(label) || (selected.has('Panic') && entry.type === 'panic');
+  return selected.has(eventLabel(entry));
 }
 
 function TrendTooltip({ active, payload, label }: {
@@ -188,17 +184,15 @@ function FilterCheck({
   label,
   checked,
   onToggle,
-  variant,
 }: {
   label: string;
   checked: boolean;
   onToggle: () => void;
-  variant?: 'panic';
 }) {
   return (
     <button
       type="button"
-      className={`bpl-reports-check${checked ? ' active' : ''}${variant === 'panic' ? ' panic' : ''}`}
+      className={`bpl-reports-check${checked ? ' active' : ''}`}
       onClick={onToggle}
     >
       <span className="bpl-reports-check-box" aria-hidden>{checked ? '✓' : ''}</span>
@@ -279,7 +273,6 @@ function MultiSelectDropdown({
                 label={option}
                 checked={isChecked(option)}
                 onToggle={() => onToggle(option)}
-                variant={option === 'Panic' ? 'panic' : undefined}
               />
             ))}
           </div>
@@ -360,6 +353,7 @@ export default function ReportsPage() {
   const filtered = useMemo(
     () =>
       entries.filter(e => {
+        if (e.type === 'panic') return false;
         const label = eventLabel(e);
         if (HIDDEN_LABELS.includes(label)) return false;
         if (!matchesEventType(e, selectedEventTypes)) return false;
@@ -408,7 +402,6 @@ export default function ReportsPage() {
       const dateKey = cursor.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
       byDate.set(dateKey, {
         date: dateKey,
-        Panic: 0,
         'Harsh Braking': 0,
         'Harsh Acceleration': 0,
         Overspeeding: 0,
@@ -674,16 +667,15 @@ export default function ReportsPage() {
                   </thead>
                   <tbody>
                     {filtered.map((entry, i) => {
-                      const isPanic = entry.type === 'panic';
                       const label = eventLabel(entry);
                       const displayName =
                         entry.regNo && entry.regNo !== 'N/A' ? entry.regNo : entry.assetId;
                       const driverDisplay = displayDriverName(entry.driverName);
                       return (
-                        <tr key={`${entry.eventId}-${i}`} className={isPanic ? 'panic' : undefined}>
+                        <tr key={`${entry.eventId}-${i}`}>
                           <td className="muted">{formatTime(entry.timestamp)}</td>
                           <td>
-                            <span className={`bpl-reports-event-label${isPanic ? ' panic' : ''}`}>
+                            <span className="bpl-reports-event-label">
                               {label}
                             </span>
                           </td>
@@ -759,7 +751,6 @@ export default function ReportsPage() {
                           dataKey={line}
                           stroke={EVENT_COLORS[line]}
                           strokeWidth={line === 'Total' ? 2.5 : 1.5}
-                          strokeDasharray={line === 'Panic' ? '5 3' : undefined}
                           dot={false}
                           activeDot={{ r: 4 }}
                         />

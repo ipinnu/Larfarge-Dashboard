@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { AlertOctagon, ChevronDown, ChevronUp, MapPin } from 'lucide-react';
+import { ChevronDown, ChevronUp, MapPin } from 'lucide-react';
 import type { FleetVehicle } from '../../context/FleetContext';
 
 const STATUS_META: Record<string, { label: string; color: string; dot: string; bg: string }> = {
@@ -45,21 +45,19 @@ function StatusChips({ vehicles }: { vehicles: FleetVehicle[] }) {
 }
 
 function VehicleCard({ vehicle }: { vehicle: FleetVehicle }) {
-  const isPanic = vehicle.panic;
   const meta = STATUS_META[vehicle.status] ?? STATUS_META.Offline;
 
   return (
-    <div className={`gv-card${isPanic ? ' gv-card-panic' : ''}`}>
+    <div className="gv-card">
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: isPanic ? '#ef4444' : meta.dot }} />
-          <span style={{ fontSize: 11, fontWeight: 600, color: isPanic ? '#ef4444' : meta.color }}>
-            {isPanic ? 'PANIC' : meta.label}
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: meta.dot }} />
+          <span style={{ fontSize: 11, fontWeight: 600, color: meta.color }}>
+            {meta.label}
           </span>
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-        {isPanic && <AlertOctagon size={13} style={{ color: '#ef4444', flexShrink: 0 }} />}
         <span style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--cd-font-display)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {vehicle.regNo}
         </span>
@@ -81,15 +79,14 @@ function VehicleCard({ vehicle }: { vehicle: FleetVehicle }) {
 
 function ZoneSection({ siteName, vehicles, startOpen }: { siteName: string; vehicles: FleetVehicle[]; startOpen: boolean }) {
   const [open, setOpen] = useState(startOpen);
-  const hasPanic = vehicles.some(v => v.panic);
 
   return (
     <div className="gv-zone">
-      <button type="button" className={`gv-zone-header${hasPanic ? ' gv-zone-header-panic' : ''}`} onClick={() => setOpen(o => !o)}>
+      <button type="button" className="gv-zone-header" onClick={() => setOpen(o => !o)}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--cd-font-display)' }}>{siteName}</span>
-            <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 9px', borderRadius: 999, background: hasPanic ? 'rgba(239,68,68,0.12)' : 'rgba(128,128,128,0.1)', color: hasPanic ? '#ef4444' : 'var(--cd-text-muted)' }}>
+            <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 9px', borderRadius: 999, background: 'rgba(128,128,128,0.1)', color: 'var(--cd-text-muted)' }}>
               {vehicles.length} vehicle{vehicles.length !== 1 ? 's' : ''}
             </span>
           </div>
@@ -122,12 +119,7 @@ export default function FleetGroupedCompact({ vehicles }: Props) {
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(v);
     });
-    return [...map.entries()].sort((a, b) => {
-      const panicA = a[1].some(v => v.panic) ? 1 : 0;
-      const panicB = b[1].some(v => v.panic) ? 1 : 0;
-      if (panicA !== panicB) return panicB - panicA;
-      return b[1].length - a[1].length;
-    });
+    return [...map.entries()].sort((a, b) => b[1].length - a[1].length);
   }, [vehicles]);
 
   if (!groups.length) {

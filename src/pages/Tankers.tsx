@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Truck, Navigation, Clock, MapPin, Activity,
   TrendingUp, TrendingDown, Minus, AlertTriangle, Route, LayoutGrid, Map, Table,
+  Gauge, OctagonAlert, Zap, CornerDownRight,
 } from 'lucide-react';
 import { useFleet } from '../context/FleetContext';
 import type { Vehicle, LogEntry } from '../context/FleetContext';
 import { displayDriverName } from '../lib/driverUtils';
+import { scoreFromEvents, scoreBandColor, scoreBandLabel } from '../lib/fleetSafetyScore';
 
 const TANKER_ZONES = ['bulk tanker', 'bulk tankers'];
 
@@ -54,30 +56,17 @@ function StatCard({
 // ── Safety Score ─────────────────────────────────────────────────────────────
 
 function TankerSafetyScore({ events, vehicleCount }: { events: LogEntry[]; vehicleCount: number }) {
+  const { scoreConfig } = useFleet();
   const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
   const sixtyDaysAgo = Date.now() - 60 * 24 * 60 * 60 * 1000;
-  const REFERENCE = 50;
-
-  const scoreFor = (evts: LogEntry[]) => {
-    const scale = REFERENCE / Math.max(vehicleCount, 1);
-    let d = 0;
-    evts.forEach(e => {
-      if (e.label === 'Harsh Braking') d += 2;
-      else if (e.label === 'Harsh Acceleration') d += 1.5;
-      else if (e.label === 'Overspeeding' || e.label === 'Overspeed Tiered') d += 1.5;
-      else if (e.label === 'Harsh Cornering') d += 1;
-      else if (e.type === 'panic') d += 5;
-    });
-    return Math.max(30, Math.min(100, Math.round(100 - d * scale)));
-  };
 
   const recent = events.filter(e => new Date(e.eventTime || e.timestamp).getTime() >= thirtyDaysAgo);
   const prev   = events.filter(e => { const t = new Date(e.eventTime || e.timestamp).getTime(); return t >= sixtyDaysAgo && t < thirtyDaysAgo; });
-  const score  = scoreFor(recent);
-  const delta  = score - scoreFor(prev);
+  const score  = scoreFromEvents(recent, vehicleCount, scoreConfig);
+  const delta  = score - scoreFromEvents(prev, vehicleCount, scoreConfig);
 
-  const color = score >= 80 ? '#16a34a' : score >= 60 ? '#d97706' : score >= 45 ? '#e05c2a' : '#CC0000';
-  const label = score >= 80 ? 'Good Standing' : score >= 60 ? 'Needs Attention' : score >= 45 ? 'Below Average' : 'Poor Performance';
+  const color = scoreBandColor(score, scoreConfig);
+  const label = scoreBandLabel(score, scoreConfig);
 
   return (
     <div className="bpl-card" style={{ padding: '20px 22px' }}>
@@ -166,7 +155,7 @@ function ZoneBreakdown({ tankers }: { tankers: Vehicle[] }) {
 // ── Recent Incidents ──────────────────────────────────────────────────────────
 
 function TankerIncidents({ events }: { events: LogEntry[] }) {
-  const visible = events.slice(0, 8);
+  const visible = events.filter(e => e.type !== 'panic').slice(0, 8);
   return (
     <div className="bpl-card">
       <div className="bpl-card-header">
@@ -183,10 +172,10 @@ function TankerIncidents({ events }: { events: LogEntry[] }) {
         }}>
           <div style={{
             width: 7, height: 7, borderRadius: '50%',
-            background: e.type === 'panic' ? '#CC0000' : e.label === 'Harsh Braking' ? '#CC0000' : '#d97706',
+            background: e.label === 'Harsh Braking' ? '#CC0000' : '#d97706',
           }} />
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--cd-text)' }}>{e.label || 'Panic'}{displayDriverName(e.driverName) !== '—' ? ` — ${displayDriverName(e.driverName)}` : ''}</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--cd-text)' }}>{e.label || 'Unknown'}{displayDriverName(e.driverName) !== '—' ? ` — ${displayDriverName(e.driverName)}` : ''}</div>
             <div style={{ fontSize: 11, color: 'var(--cd-text-muted)' }}>{e.regNo || e.assetId} · {e.address || 'Location unknown'}</div>
           </div>
           <div style={{ fontSize: 11, color: 'var(--cd-text-muted)', flexShrink: 0 }}>
@@ -194,6 +183,133 @@ function TankerIncidents({ events }: { events: LogEntry[] }) {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+// ── Incident Breakdown ────────────────────────────────────────────────────────
+
+const BREAKDOWN_TYPES = [
+  { key: 'overspeed', label: 'Overspeeding', short: 'Speed', color: '#d97706', icon: Gauge, match: (e: LogEntry) => !!e.label?.includes('Overspeed') },
+  { key: 'brake', label: 'Harsh Braking', short: 'Brake', color: '#CC0000', icon: OctagonAlert, match: (e: LogEntry) => e.label === 'Harsh Braking' },
+  { key: 'accel', label: 'Harsh Accel.', short: 'Accel', color: '#c27803', icon: Zap, match: (e: LogEntry) => e.label === 'Harsh Acceleration' },
+  { key: 'corner', label: 'Harsh Cornering', short: 'Corner', color: '#0d9488', icon: CornerDownRight, match: (e: LogEntry) => e.type !== 'panic' && e.label === 'Harsh Cornering' },
+] as const;
+
+function TankerIncidentBreakdown({ events }: { events: LogEntry[] }) {
+  const { rows, total } = useMemo(() => {
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const recent = events.filter(e => new Date(e.eventTime || e.timestamp).getTime() >= thirtyDaysAgo);
+    const counted = BREAKDOWN_TYPES.map(t => ({
+      ...t,
+      n: recent.filter(t.match).length,
+    })).sort((a, b) => b.n - a.n);
+    return { rows: counted, total: counted.reduce((s, r) => s + r.n, 0) };
+  }, [events]);
+
+  const max = Math.max(...rows.map(r => r.n), 1);
+  const lead = rows[0];
+
+  return (
+    <div className="bpl-card" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 100 }}>
+      <div style={{
+        padding: '16px 18px 14px',
+        borderBottom: '1px solid var(--cd-border)',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12,
+      }}>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--cd-text-muted)', marginBottom: 4 }}>
+            Incident Breakdown
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--cd-text-muted)' }}>Last 30 days</div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontSize: 26, fontWeight: 700, lineHeight: 1, color: 'var(--cd-text)', fontFamily: 'var(--cd-font-display)' }}>
+            {total}
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--cd-text-muted)', marginTop: 3, fontWeight: 600 }}>events</div>
+        </div>
+      </div>
+
+      {total === 0 ? (
+        <div style={{ padding: '28px 18px', textAlign: 'center', color: 'var(--cd-text-muted)', fontSize: 13 }}>
+          No tanker incidents in this window
+        </div>
+      ) : (
+        <div style={{ padding: '14px 18px 16px', display: 'flex', flexDirection: 'column', gap: 14, flex: 1 }}>
+          {/* Mix strip */}
+          <div>
+            <div style={{ display: 'flex', height: 10, borderRadius: 6, overflow: 'hidden', background: 'var(--cd-border)' }}>
+              {rows.filter(r => r.n > 0).map(r => (
+                <div
+                  key={r.key}
+                  title={`${r.label}: ${r.n}`}
+                  style={{
+                    width: `${(r.n / total) * 100}%`,
+                    background: r.color,
+                    minWidth: r.n > 0 ? 4 : 0,
+                  }}
+                />
+              ))}
+            </div>
+            {lead && lead.n > 0 && (
+              <div style={{ marginTop: 8, fontSize: 11, color: 'var(--cd-text-muted)' }}>
+                Leading type{' '}
+                <span style={{ color: lead.color, fontWeight: 700 }}>{lead.label}</span>
+                {' · '}
+                {Math.round((lead.n / total) * 100)}% of tanker incidents
+              </div>
+            )}
+          </div>
+
+          {/* Ranked rows */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {rows.map(r => {
+              const Icon = r.icon;
+              const pct = total > 0 ? Math.round((r.n / total) * 100) : 0;
+              return (
+                <div key={r.key} style={{ display: 'grid', gridTemplateColumns: '28px 1fr auto', gap: 10, alignItems: 'center' }}>
+                  <div style={{
+                    width: 28, height: 28, borderRadius: 8,
+                    background: `${r.color}14`, color: r.color,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <Icon size={14} strokeWidth={2.25} />
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 5 }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--cd-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {r.label}
+                      </span>
+                      <span style={{ fontSize: 11, color: 'var(--cd-text-muted)', fontWeight: 600, flexShrink: 0 }}>
+                        {pct}%
+                      </span>
+                    </div>
+                    <div style={{ height: 4, background: 'var(--cd-border)', borderRadius: 99, overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${(r.n / max) * 100}%`,
+                        background: r.color,
+                        borderRadius: 99,
+                        transition: 'width 0.35s ease',
+                        opacity: r.n === 0 ? 0.35 : 1,
+                      }} />
+                    </div>
+                  </div>
+                  <div style={{
+                    minWidth: 36, textAlign: 'right',
+                    fontSize: 18, fontWeight: 700, lineHeight: 1,
+                    color: r.n > 0 ? r.color : 'var(--cd-text-muted)',
+                    fontFamily: 'var(--cd-font-display)',
+                  }}>
+                    {r.n}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -325,38 +441,10 @@ export default function Tankers() {
         </div>
       </div>
 
-      {/* Incidents + view toggle */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 14, marginBottom: 20 }}>
+      {/* Incidents + breakdown */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(280px, 0.9fr)', gap: 14, marginBottom: 20, alignItems: 'stretch' }}>
         <TankerIncidents events={tankerEvents} />
-
-        <div className="bpl-card" style={{ padding: '18px 20px' }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--cd-text)', fontFamily: 'var(--cd-font-display)', marginBottom: 14 }}>
-            Incident Breakdown
-          </div>
-          {(() => {
-            const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-            const recent = tankerEvents.filter(e => new Date(e.eventTime || e.timestamp).getTime() >= thirtyDaysAgo);
-            const counts = [
-              { label: 'Overspeeding',   n: recent.filter(e => e.label?.includes('Overspeed')).length, color: '#d97706' },
-              { label: 'Harsh Braking',  n: recent.filter(e => e.label === 'Harsh Braking').length,    color: '#CC0000' },
-              { label: 'Harsh Accel.',   n: recent.filter(e => e.label === 'Harsh Acceleration').length, color: '#f59e0b' },
-              { label: 'Harsh Cornering',n: recent.filter(e => e.label === 'Harsh Cornering').length,  color: '#8b5cf6' },
-              { label: 'Panic',          n: recent.filter(e => e.type === 'panic').length,              color: '#CC0000' },
-            ];
-            const max = Math.max(...counts.map(c => c.n), 1);
-            return counts.map(c => (
-              <div key={c.label} style={{ marginBottom: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 12 }}>
-                  <span style={{ color: 'var(--cd-text)', fontWeight: 500 }}>{c.label}</span>
-                  <span style={{ color: 'var(--cd-text-muted)', fontWeight: 600 }}>{c.n}</span>
-                </div>
-                <div style={{ height: 5, background: 'var(--cd-border)', borderRadius: 99, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${(c.n / max) * 100}%`, background: c.color, borderRadius: 99, transition: 'width 0.4s ease' }} />
-                </div>
-              </div>
-            ));
-          })()}
-        </div>
+        <TankerIncidentBreakdown events={tankerEvents} />
       </div>
 
       {/* Fleet table */}

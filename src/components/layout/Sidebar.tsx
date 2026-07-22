@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, Users, User, GraduationCap, Award, BadgeCheck,
-  AlertTriangle, Search, ScatterChart, ListChecks,
-  Shield, FileText, Wrench, MessageSquare, History,
-  FileBarChart2, Folder,
-  Truck, Map, Navigation, Route, Brain,
+  LayoutDashboard, Users,
+  AlertTriangle, Search, ListChecks,
+  Shield, Wrench, FileBarChart2, Folder, BarChart3, Fuel,
+  Truck, Map, Navigation, Route, Brain, Lock, Sparkles, Gauge,
   Settings, ChevronDown, Sun, Moon, LogOut,
 } from 'lucide-react';
 import { useFleet } from '../../context/FleetContext';
+import { UPCOMING_FEATURES } from '../../config/lockedFeatures';
 
 interface SubItem {
   path: string;
@@ -27,44 +27,34 @@ interface NavGroup {
 const NAV: NavGroup[] = [
   { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/fleet', icon: Map, label: 'Fleet' },
-  {
-    path: '/drivers', icon: Users, label: 'Driver Management',
-    children: [
-      { path: '/drivers', label: 'Drivers', icon: User },
-      { path: '/drivers/coaching', label: 'Coaching', icon: GraduationCap },
-      { path: '/drivers/training', label: 'Training', icon: Award },
-      { path: '/drivers/certifications', label: 'Certifications', icon: BadgeCheck },
-    ],
-  },
+  { path: '/drivers', icon: Users, label: 'Driver Management' },
   {
     path: '/incidents', icon: AlertTriangle, label: 'Incident Intelligence',
     children: [
       { path: '/incidents', label: 'Event Explorer', icon: Search },
-      { path: '/incidents/analysis', label: 'Analysis', icon: ScatterChart },
       { path: '/incidents/response', label: 'Response Tracking', icon: ListChecks },
     ],
   },
   { path: '/tankers', icon: Truck, label: 'Bulk Tankers' },
   { path: '/safety', icon: Shield, label: 'Safety' },
+  { path: '/kpi', icon: Gauge, label: 'Utilization & KPIs' },
   {
-    path: '/trips', icon: Route, label: 'Trips',
+    path: '/fuel', icon: Fuel, label: 'Fuel',
     children: [
-      { path: '/trips', label: 'All trips', icon: Route },
-      { path: '/trips/dispatch', label: 'Dispatch', icon: Navigation },
+      { path: '/fuel/monitoring', label: 'Monitoring', icon: Fuel },
+      { path: '/fuel/consumption', label: 'Consumption', icon: BarChart3 },
     ],
   },
-  { path: '/aria', icon: Brain, label: 'AI Insights' },
-  {
-    path: '/reports', icon: FileBarChart2, label: 'Reports',
-    children: [
-      { path: '/reports', label: 'Reports', icon: FileBarChart2 },
-      { path: '/reports/documents', label: 'Documents', icon: Folder },
-    ],
-  },
-  { path: '/maintenance', icon: Wrench, label: 'Maintenance' },
 ];
 
-const PINNED: NavGroup = { path: '/settings', icon: Settings, label: 'Settings', pinned: true };
+const UPCOMING_ICONS: Record<string, React.ElementType> = {
+  '/trips': Route,
+  '/trips/dispatch': Navigation,
+  '/reports': FileBarChart2,
+  '/reports/documents': Folder,
+  '/maintenance': Wrench,
+  '/aria': Brain,
+};
 
 interface Props {
   mobileOpen?: boolean;
@@ -72,7 +62,7 @@ interface Props {
 }
 
 export default function Sidebar({ mobileOpen, onCloseMobile }: Props) {
-  const { theme, setTheme, redAlertCount, fleetSafetyScore } = useFleet();
+  const { theme, setTheme, redAlertCount, fleetSafetyScore, scoreConfig } = useFleet();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -85,7 +75,12 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: Props) {
     return match?.path ?? null;
   };
 
+  const upcomingActive = UPCOMING_FEATURES.some(
+    f => location.pathname === f.path || location.pathname.startsWith(f.path + '/'),
+  );
+
   const [openGroup, setOpenGroup] = useState<string | null>(() => getParentPath(location.pathname));
+  const [upcomingOpen, setUpcomingOpen] = useState(() => upcomingActive);
 
   const toggleGroup = (path: string, defaultChild?: string) => {
     if (openGroup === path) {
@@ -96,19 +91,18 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: Props) {
     }
   };
 
-  const isSubActive = (child: SubItem) => {
-    if (child.path === location.pathname) return true;
-    // treat /drivers as active for /drivers (exact) only
-    return false;
-  };
-
-  const scoreColor = fleetSafetyScore >= 80 ? '#33d38d' : fleetSafetyScore >= 60 ? '#f5b453' : fleetSafetyScore >= 45 ? '#e05c2a' : '#ff6b6b';
+  const scoreColor = fleetSafetyScore >= scoreConfig.bandGood
+    ? '#33d38d'
+    : fleetSafetyScore >= scoreConfig.bandAttention
+    ? '#f5b453'
+    : fleetSafetyScore >= scoreConfig.bandBelow
+    ? '#e05c2a'
+    : '#ff6b6b';
 
   return (
     <aside className={`bpl-sidebar${mobileOpen ? ' mobile-open' : ''}`}
       style={{ background: '#0a1520', width: 220 }}
     >
-      {/* Logo */}
       <div style={{ padding: '16px 16px 12px', borderBottom: '0.5px solid rgba(255,255,255,0.08)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
@@ -131,7 +125,6 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: Props) {
           </div>
         </div>
 
-        {/* Score strip */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           marginTop: 12, padding: '8px 10px',
@@ -160,7 +153,6 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: Props) {
         </div>
       </div>
 
-      {/* Scrollable nav */}
       <div style={{
         flex: 1, overflowY: 'auto', padding: '8px 0',
         scrollbarWidth: 'none',
@@ -205,7 +197,6 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: Props) {
 
           return (
             <div key={group.path} style={{ marginBottom: 2 }}>
-              {/* Parent row */}
               <div
                 onClick={() => toggleGroup(group.path, group.children![0].path)}
                 style={{
@@ -235,7 +226,6 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: Props) {
                 />
               </div>
 
-              {/* Sub-items with max-height animation */}
               <div style={{
                 overflow: 'hidden',
                 maxHeight: isOpen ? `${group.children!.length * 34}px` : '0',
@@ -271,9 +261,66 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: Props) {
             </div>
           );
         })}
+
+        <div style={{ marginTop: 10, borderTop: '0.5px solid rgba(255,255,255,0.08)', paddingTop: 8 }}>
+          <div
+            onClick={() => setUpcomingOpen(o => !o)}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '8px 14px', cursor: 'pointer',
+              color: upcomingActive ? '#0078D4' : 'rgba(255,255,255,0.45)',
+              fontSize: 12.5,
+              userSelect: 'none',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+              <Sparkles size={15} />
+              Upcoming features
+            </div>
+            <ChevronDown
+              size={13}
+              style={{
+                color: 'rgba(255,255,255,0.25)',
+                transition: 'transform 0.2s ease',
+                transform: upcomingOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                flexShrink: 0,
+              }}
+            />
+          </div>
+          <div style={{
+            overflow: 'hidden',
+            maxHeight: upcomingOpen ? `${UPCOMING_FEATURES.length * 34}px` : '0',
+            transition: 'max-height 0.25s ease',
+          }}>
+            {UPCOMING_FEATURES.map(item => {
+              const Icon = UPCOMING_ICONS[item.path] ?? Lock;
+              const active = location.pathname === item.path;
+              return (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  end
+                  onClick={onCloseMobile}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '6px 14px 6px 38px',
+                    fontSize: 12,
+                    color: active ? '#0078D4' : 'rgba(255,255,255,0.35)',
+                    textDecoration: 'none',
+                    background: active ? 'rgba(0,120,212,0.1)' : 'transparent',
+                    transition: 'background 0.15s, color 0.15s',
+                  }}
+                >
+                  <Icon size={13} style={{ flexShrink: 0 }} />
+                  <span style={{ flex: 1 }}>{item.label}</span>
+                  <Lock size={11} style={{ opacity: 0.45, flexShrink: 0 }} />
+                </NavLink>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
-      {/* Bottom: Settings + BPL Analyst badge */}
       <div style={{ borderTop: '0.5px solid rgba(255,255,255,0.08)', paddingBottom: 12 }}>
         <NavLink
           to="/settings/general"
@@ -295,7 +342,6 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: Props) {
           Settings
         </NavLink>
 
-        {/* BPL Analyst online badge */}
         <div style={{
           margin: '8px 10px 0',
           background: 'rgba(0,120,212,0.12)',

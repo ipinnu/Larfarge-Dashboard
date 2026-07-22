@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import 'leaflet.markercluster';
+import { cachedFetchJson, cachePeek, CACHE_KEYS, CACHE_TTL } from '../lib/apiCache';
 
 interface Warning {
   eventId: string;
@@ -44,7 +45,6 @@ const STATUS_COLORS: Record<string, string> = {
   Parked: '#ea580c',
   Inactive: '#2563eb',
   Offline: '#64748b',
-  Panic: '#c8102e',
   Warning: '#d97706',
 };
 
@@ -64,12 +64,12 @@ function createCircleIcon(color: string) {
   });
 }
 
-function createFlagIcon(color: string, isPanic: boolean) {
-  const height = isPanic ? 32 : 28;
+function createFlagIcon(color: string) {
+  const height = 28;
   const svg = `
     <svg width="24" height="${height}" viewBox="0 0 24 ${height}" xmlns="http://www.w3.org/2000/svg">
       <rect x="2" y="0" width="2.5" height="${height}" fill="${color}" rx="1"/>
-      <path d="M4.5 1 L22 ${isPanic ? 9 : 8} L4.5 ${isPanic ? 17 : 15} Z" fill="${color}" stroke="#fff" stroke-width="1"/>
+      <path d="M4.5 1 L22 8 L4.5 15 Z" fill="${color}" stroke="#fff" stroke-width="1"/>
     </svg>
   `;
   return L.divIcon({
@@ -86,9 +86,10 @@ export default function MapView({ authFetch, statusFilter, onAcknowledge, compac
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
   const clusterGroupRef = useRef<any>(null);
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>(() =>
+    cachePeek<Vehicle[]>(CACHE_KEYS.fleetData) ?? [],
+  );
   const [searchTerm, setSearchTerm] = useState('');
-  const prevPanicIds = useRef<Set<string>>(new Set());
   const prevWarningIds = useRef<Set<string>>(new Set());
 
   // Initialize map
@@ -115,9 +116,8 @@ export default function MapView({ authFetch, statusFilter, onAcknowledge, compac
       zoomToBoundsOnClick: true,
       iconCreateFunction: (cluster: any) => {
         const count = cluster.getChildCount();
-        const hasChildPanic = cluster.getAllChildMarkers().some((m: any) => m.options.isPanic);
         const hasChildWarning = cluster.getAllChildMarkers().some((m: any) => m.options.isWarning);
-        const bg = hasChildPanic ? '#c8102e' : hasChildWarning ? '#d97706' : '#334155';
+        const bg = hasChildWarning ? '#d97706' : '#334155';
         return L.divIcon({
           html: `<div style="
             width: 32px; height: 32px;
@@ -168,11 +168,16 @@ export default function MapView({ authFetch, statusFilter, onAcknowledge, compac
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await authFetch('/api/data');
-        if (res.ok) {
-          const data = await res.json();
-          setVehicles(Array.isArray(data) ? data : []);
-        }
+        const data = await cachedFetchJson<Vehicle[]>(
+          CACHE_KEYS.fleetData,
+          CACHE_TTL.fleetData,
+          async () => {
+            const res = await authFetch('/api/data');
+            if (!res.ok) return null;
+            return res.json();
+          },
+        );
+        if (data) setVehicles(Array.isArray(data) ? data : []);
       } catch {
         // ignore
       }
@@ -208,18 +213,14 @@ export default function MapView({ authFetch, statusFilter, onAcknowledge, compac
       return matchesStatus && matchesSearch;
     });
 
-    // Find new panics and warnings for auto-pan
-    const currentPanicIds = new Set(filtered.filter(v => v.panic).map(v => v.id));
-    const currentWarningIds = new Set(filtered.filter(v => v.warnings && v.warnings.length > 0 && !v.panic).map(v => v.id));
+    // Find new warnings for auto-pan
+    const currentWarningIds = new Set(filtered.filter(v => v.warnings && v.warnings.length > 0).map(v => v.id));
 
-    const newPanics = filtered.filter(v => v.panic && !prevPanicIds.current.has(v.id));
-    const newWarnings = filtered.filter(v => v.warnings && v.warnings.length > 0 && !v.panic && !prevWarningIds.current.has(v.id));
+    const newWarnings = filtered.filter(v => v.warnings && v.warnings.length > 0 && !prevWarningIds.current.has(v.id));
 
-    prevPanicIds.current = currentPanicIds;
     prevWarningIds.current = currentWarningIds;
 
-    // Auto-pan to new panic first, then new warning
-    const autoPanTarget = newPanics[0] || newWarnings[0];
+    const autoPanTarget = newWarnings[0];
     if (autoPanTarget?.position) {
       mapRef.current.flyTo(
         [autoPanTarget.position.latitude, autoPanTarget.position.longitude],
@@ -241,33 +242,27 @@ export default function MapView({ authFetch, statusFilter, onAcknowledge, compac
     filtered.forEach(vehicle => {
       if (!vehicle.position || !mapRef.current) return;
 
-      const isPanic = vehicle.panic;
-      const hasWarning = !isPanic && vehicle.warnings && vehicle.warnings.length > 0;
-      const color = isPanic ? STATUS_COLORS.Panic : hasWarning ? STATUS_COLORS.Warning : STATUS_COLORS[vehicle.status] || STATUS_COLORS.Offline;
-      const icon = (isPanic || hasWarning) ? createFlagIcon(color, isPanic) : createCircleIcon(color);
+      const hasWarning = vehicle.warnings && vehicle.warnings.length > 0;
+      const color = hasWarning ? STATUS_COLORS.Warning : STATUS_COLORS[vehicle.status] || STATUS_COLORS.Offline;
+      const icon = hasWarning ? createFlagIcon(color) : createCircleIcon(color);
       const warningLabels = vehicle.warnings?.map(w => w.label).join(', ') || '';
 
       const popupContent = `
         <div style="font-family: system-ui, sans-serif; min-width: 200px; padding: 4px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <strong style="font-size: 14px; color: ${isPanic ? '#c8102e' : '#0f172a'};">${vehicle.regNo}</strong>
+            <strong style="font-size: 14px; color: #0f172a;">${vehicle.regNo}</strong>
             <span style="
               padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 500;
-              background: ${isPanic ? '#fff1f2' : '#f1f5f9'};
-              color: ${isPanic ? '#c8102e' : '#64748b'};
-              border: 1px solid ${isPanic ? '#fecdd3' : '#e2e8f0'};
-            ">${isPanic ? 'PANIC' : vehicle.status}</span>
+              background: #f1f5f9;
+              color: #64748b;
+              border: 1px solid #e2e8f0;
+            ">${vehicle.status}</span>
           </div>
           <div style="font-size: 12px; color: #0f172a; margin-bottom: 4px;">${vehicle.assetName}</div>
           <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">${vehicle.transporter}</div>
           <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">📍 ${vehicle.position.address || 'Unknown'}</div>
-          <div style="font-size: 11px; color: #64748b; margin-bottom: ${isPanic || hasWarning ? '8px' : '0'};">${vehicle.position.speed.toFixed(1)} km/h • ${vehicle.date}</div>
-          ${hasWarning ? `<div style="font-size: 11px; color: #854F0B; background: #fef3c7; padding: 4px 8px; border-radius: 4px; margin-bottom: ${isPanic ? '8px' : '0'};">⚠ ${warningLabels}</div>` : ''}
-          ${isPanic ? `<button
-            onclick="window.acknowledgeVehicle('${vehicle.id}')"
-            style="width: 100%; padding: 6px; background: #c8102e; color: #fff; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; margin-top: 4px;">
-            ACKNOWLEDGE
-          </button>` : ''}
+          <div style="font-size: 11px; color: #64748b; margin-bottom: ${hasWarning ? '8px' : '0'};">${vehicle.position.speed.toFixed(1)} km/h • ${vehicle.date}</div>
+          ${hasWarning ? `<div style="font-size: 11px; color: #854F0B; background: #fef3c7; padding: 4px 8px; border-radius: 4px;">⚠ ${warningLabels}</div>` : ''}
         </div>
       `;
 
@@ -279,7 +274,7 @@ export default function MapView({ authFetch, statusFilter, onAcknowledge, compac
       } else {
         const marker = L.marker(
           [vehicle.position.latitude, vehicle.position.longitude],
-          { icon, isPanic, isWarning: !!hasWarning } as any
+          { icon, isWarning: !!hasWarning } as any
         ).bindPopup(popupContent, { maxWidth: 240 });
         clusterGroupRef.current.addLayer(marker);
         markersRef.current.set(vehicle.id, marker);
@@ -325,14 +320,7 @@ export default function MapView({ authFetch, statusFilter, onAcknowledge, compac
       <div style={{ padding: '8px 24px', borderBottom: '1px solid var(--cd-border)', display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
         {Object.entries(STATUS_COLORS).filter(([k]) => !['Warning'].includes(k)).map(([status, color]) => (
           <span key={status} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: 'var(--cd-text-muted)' }}>
-            {status === 'Panic' ? (
-              <svg width="14" height="18" viewBox="0 0 24 28" style={{ flexShrink: 0 }}>
-                <rect x="2" y="0" width="2.5" height="28" fill={color} rx="1"/>
-                <path d="M4.5 1 L22 9 L4.5 17 Z" fill={color} stroke="#fff" stroke-width="1"/>
-              </svg>
-            ) : (
-              <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: color, border: '1.5px solid #fff', boxShadow: '0 1px 3px rgba(0,0,0,0.2)', flexShrink: 0, display: 'inline-block' }}></span>
-            )}
+            <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: color, border: '1.5px solid #fff', boxShadow: '0 1px 3px rgba(0,0,0,0.2)', flexShrink: 0, display: 'inline-block' }}></span>
             {status}
           </span>
         ))}

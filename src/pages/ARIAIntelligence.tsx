@@ -12,11 +12,11 @@ const FMCSA_BASICS = [
 ];
 
 function IncidentAnalysisCard({ event, index }: { event: any; index: number }) {
-  const label = event.type === 'panic' ? 'Panic Alert' : event.label || 'Unknown';
-  const severity = event.type === 'panic' || event.label === 'Harsh Braking' ? 'RED' :
+  const label = event.label || 'Unknown';
+  const severity = event.label === 'Harsh Braking' ? 'RED' :
     event.label?.includes('Overspeed') ? 'YELLOW' : 'YELLOW';
 
-  const basicCategory = label === 'Harsh Braking' || label === 'Panic Alert' ? 'B1 — Unsafe Driving' :
+  const basicCategory = label === 'Harsh Braking' ? 'B1 — Unsafe Driving' :
     label.includes('Overspeed') ? 'B1 — Unsafe Driving' :
     label === 'Harsh Acceleration' ? 'B1 — Unsafe Driving' : 'B1 — Unsafe Driving';
 
@@ -80,18 +80,17 @@ function IncidentAnalysisCard({ event, index }: { event: any; index: number }) {
 }
 
 function DriverRiskVisual({ events }: { events: any[] }) {
-  const driverMap = new Map<string, { name: string; count: number; panic: number }>();
+  const driverMap = new Map<string, { name: string; count: number }>();
   events.forEach(e => {
+    if (e.type === 'panic') return;
     const key = isKnownDriver(e.driverName) ? e.driverName! : null;
     if (!key || HIDDEN_LABELS.includes(e.label || '')) return;
-    if (!driverMap.has(key)) driverMap.set(key, { name: key, count: 0, panic: 0 });
-    const d = driverMap.get(key)!;
-    if (e.type === 'panic') d.panic++;
-    else d.count++;
+    if (!driverMap.has(key)) driverMap.set(key, { name: key, count: 0 });
+    driverMap.get(key)!.count++;
   });
 
-  const drivers = Array.from(driverMap.values()).sort((a, b) => b.count + b.panic * 3 - (a.count + a.panic * 3)).slice(0, 8);
-  const max = Math.max(...drivers.map(d => d.count + d.panic * 3), 1);
+  const drivers = Array.from(driverMap.values()).sort((a, b) => b.count - a.count).slice(0, 8);
+  const max = Math.max(...drivers.map(d => d.count), 1);
 
   return (
     <div className="bpl-card">
@@ -105,14 +104,14 @@ function DriverRiskVisual({ events }: { events: any[] }) {
             No driver data available
           </div>
         ) : drivers.map(d => {
-          const risk = d.count + d.panic * 3;
+          const risk = d.count;
           const pct = (risk / max) * 100;
           const color = pct > 60 ? '#CC0000' : pct > 30 ? '#d97706' : '#16a34a';
           return (
             <div key={d.name} style={{ marginBottom: 14 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 12 }}>
                 <span style={{ fontWeight: 600, color: 'var(--cd-text)' }}>{d.name}</span>
-                <span style={{ color, fontWeight: 700 }}>{d.count} events{d.panic > 0 ? ` · ${d.panic} panic` : ''}</span>
+                <span style={{ color, fontWeight: 700 }}>{d.count} events</span>
               </div>
               <div style={{ height: 8, background: 'var(--cd-border)', borderRadius: 99, overflow: 'hidden' }}>
                 <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 99, transition: 'width 0.4s ease' }} />
@@ -126,9 +125,8 @@ function DriverRiskVisual({ events }: { events: any[] }) {
 }
 
 function OpsRecommendations({ events }: { events: any[] }) {
-  const harshBrakingCount = events.filter(e => e.label === 'Harsh Braking').length;
-  const overspeedCount = events.filter(e => e.label?.includes('Overspeed')).length;
-  const panicCount = events.filter(e => e.type === 'panic').length;
+  const harshBrakingCount = events.filter(e => e.type !== 'panic' && e.label === 'Harsh Braking').length;
+  const overspeedCount = events.filter(e => e.type !== 'panic' && e.label?.includes('Overspeed')).length;
 
   const recs = [];
 
@@ -143,13 +141,6 @@ function OpsRecommendations({ events }: { events: any[] }) {
     priority: 'HIGH',
     text: `${overspeedCount} speeding events recorded — issue speed compliance reminder via WhatsApp broadcast before next shift cycle.`,
     standard: 'FRSC §14',
-    color: '#CC0000',
-  });
-
-  if (panicCount > 0) recs.push({
-    priority: 'CRITICAL',
-    text: `${panicCount} panic alert${panicCount > 1 ? 's' : ''} recorded. Review incident circumstances. File in Safety Vault. Supervisor must interview affected driver${panicCount > 1 ? 's' : ''} within 24 hours.`,
-    standard: 'ISO 45001 §8.1',
     color: '#CC0000',
   });
 
@@ -204,7 +195,8 @@ export default function ARIAIntelligence({ tab = 'analysis' }: { tab?: ARIATab }
 
   const recentEvents = events
     .filter(e => {
-      const label = e.type === 'panic' ? 'Panic' : (e.label || '');
+      if (e.type === 'panic') return false;
+      const label = e.label || '';
       if (HIDDEN_LABELS.includes(label)) return false;
       return new Date(e.eventTime || e.timestamp).getTime() >= thirtyDaysAgo;
     })

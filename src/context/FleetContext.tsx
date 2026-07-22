@@ -19,6 +19,14 @@ import {
   DEMO_TRIPS,
 } from '../lib/homeWidgetData';
 import { isKnownDriver } from '../lib/driverUtils';
+import {
+  computeFleetScore,
+  loadFleetScoreConfig,
+  saveFleetScoreConfig,
+  FLEET_SCORE_CONFIG_EVENT,
+  type FleetScoreConfig,
+} from '../lib/fleetSafetyScore';
+import { cachedFetchJson, cachePeek, CACHE_KEYS, CACHE_TTL } from '../lib/apiCache';
 
 export type { StatusFilter, AlertItem, DriverScore, MaintenanceItem, FuelDay, AiInsight, TripItem };
 export type FleetVehicle = ReturnType<typeof normalizeVehicle>;
@@ -35,7 +43,7 @@ async function generateSafeIQAnalysis(
 ): Promise<SafeIQAnalysis | null> {
   if (!ANTHROPIC_API_KEY) return null;
 
-  const eventType = e.type === 'panic' ? 'Panic Alert' : (e.label || 'Unknown');
+  const eventType = e.label || 'Unknown';
   const driver = e.driverName || 'Unknown Driver';
   const vehicle = e.regNo || e.assetId;
   const location = e.address || 'Location not available';
@@ -115,6 +123,7 @@ export interface LogEntry {
   regNo?: string;
   assetName?: string;
   transporter?: string;
+  driverId?: string;
   driverName?: string;
   driverPhone?: string;
   address?: string;
@@ -135,6 +144,7 @@ export interface Vehicle {
   transporter: string;
   assetName: string;
   site?: string;
+  zone?: string;
   make?: string;
   model?: string;
   status: string;
@@ -142,6 +152,7 @@ export interface Vehicle {
   panic: boolean;
   warnings?: { label: string; timestamp: string }[];
   position?: { latitude: number; longitude: number; address?: string };
+  fuelLevel?: { level: number; timestamp?: string } | null;
 }
 
 export interface TripAsset {
@@ -200,39 +211,6 @@ export interface VaultRecord {
   updatedAt: string;
 }
 
-function computeFleetScore(events: LogEntry[], vehicleCount: number): { score: number; delta: number } {
-  const now = Date.now();
-  const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
-  const sixtyDaysAgo = now - 60 * 24 * 60 * 60 * 1000;
-
-  // Normalize deductions by fleet size so score reflects incidents-per-vehicle.
-  // Reference fleet of 50 vehicles: each event costs the same as before.
-  // Larger fleets require proportionally more events to move the score.
-  const REFERENCE_FLEET = 50;
-
-  const score = (evts: LogEntry[]) => {
-    const scale = REFERENCE_FLEET / Math.max(vehicleCount, 1);
-    let deduction = 0;
-    evts.forEach(e => {
-      if (e.label === 'Harsh Braking') deduction += 2;
-      else if (e.label === 'Harsh Acceleration') deduction += 1.5;
-      else if (e.label === 'Overspeeding' || e.label === 'Overspeed Tiered') deduction += 1.5;
-      else if (e.label === 'Harsh Cornering') deduction += 1;
-      else if (e.type === 'panic') deduction += 5;
-    });
-    return Math.max(30, Math.min(100, Math.round(100 - deduction * scale)));
-  };
-
-  const recent = events.filter(e => new Date(e.eventTime || e.timestamp).getTime() >= thirtyDaysAgo);
-  const prev = events.filter(e => {
-    const t = new Date(e.eventTime || e.timestamp).getTime();
-    return t >= sixtyDaysAgo && t < thirtyDaysAgo;
-  });
-
-  const current = score(recent);
-  const previous = score(prev);
-  return { score: current, delta: current - previous };
-}
 
 interface FleetContextType {
   authFetch: typeof authFetch;
@@ -268,6 +246,8 @@ interface FleetContextType {
   setTheme: (t: 'light' | 'dark') => void;
   isMobile: boolean;
   reloadEvents: () => void;
+  scoreConfig: FleetScoreConfig;
+  updateScoreConfig: (config: FleetScoreConfig) => void;
 }
 
 const defaultMeta: Metadata = {
@@ -278,10 +258,20 @@ const defaultMeta: Metadata = {
 const FleetContext = createContext<FleetContextType>({} as FleetContextType);
 
 export function FleetProvider({ children }: { children: React.ReactNode }) {
-  const [metadata, setMetadata] = useState<Metadata>(defaultMeta);
-  const [vehicles, setVehicles] = useState<FleetVehicle[]>([]);
-  const vehiclesRef = useRef<FleetVehicle[]>([]);
-  const [events, setEvents] = useState<LogEntry[]>([]);
+  const [metadata, setMetadata] = useState<Metadata>(() =>
+    cachePeek<Metadata>(CACHE_KEYS.fleetMeta) ?? defaultMeta,
+  );
+  const [vehicles, setVehicles] = useState<FleetVehicle[]>(() => {
+    const cached = cachePeek<Vehicle[]>(CACHE_KEYS.fleetData);
+    if (!cached?.length) return [];
+    return cached
+      .filter(v => v.site !== 'XN - Decommissioned')
+      .map(normalizeVehicle);
+  });
+  const vehiclesRef = useRef<FleetVehicle[]>(vehicles);
+  const [events, setEvents] = useState<LogEntry[]>(() =>
+    cachePeek<LogEntry[]>(CACHE_KEYS.fleetEvents) ?? [],
+  );
   const [driverDistance, setDriverDistance] = useState<DriverDistanceSummary | null>(null);
   const [distanceRange, setDistanceRange] = useState<DistanceRange>('24h');
   const [fuelSeries, setFuelSeries] = useState<FuelDay[]>(DEFAULT_FUEL_SERIES);
@@ -297,6 +287,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 900);
+  const [scoreConfig, setScoreConfig] = useState<FleetScoreConfig>(() => loadFleetScoreConfig());
   const seenEventIds = useRef<Set<string>>(new Set());
   // Tracks the incident count at which we last fired a Claude analysis per driver
   const driverAnalysisRef = useRef<Map<string, { lastThreshold: number; notifId: string }>>(new Map());
@@ -308,6 +299,25 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
 
   const setTheme = useCallback((t: 'light' | 'dark') => setThemeState(t), []);
 
+  const updateScoreConfig = useCallback((config: FleetScoreConfig) => {
+    setScoreConfig(saveFleetScoreConfig(config));
+  }, []);
+
+  useEffect(() => {
+    const onConfig = (e: Event) => {
+      const detail = (e as CustomEvent<FleetScoreConfig>).detail;
+      if (detail) setScoreConfig(detail);
+      else setScoreConfig(loadFleetScoreConfig());
+    };
+    window.addEventListener(FLEET_SCORE_CONFIG_EVENT, onConfig);
+    return () => window.removeEventListener(FLEET_SCORE_CONFIG_EVENT, onConfig);
+  }, []);
+
+  // Re-read config on mount so Nigeria leading-target migration applies after upgrades
+  useEffect(() => {
+    setScoreConfig(loadFleetScoreConfig());
+  }, []);
+
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth <= 900);
     window.addEventListener('resize', check);
@@ -316,38 +326,70 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
 
   const loadMetadata = useCallback(async () => {
     try {
-      const res = await authFetch('/api/metadata');
-      if (res.ok) setMetadata(await res.json());
+      const data = await cachedFetchJson<Metadata>(
+        CACHE_KEYS.fleetMeta,
+        CACHE_TTL.fleetMeta,
+        async () => {
+          const res = await authFetch('/api/metadata');
+          if (!res.ok) return null;
+          return res.json();
+        },
+      );
+      if (data) setMetadata(data);
     } catch {}
   }, []);
 
   const loadVehicles = useCallback(async () => {
     try {
-      const res = await authFetch('/api/data');
-      if (res.ok) {
-        const data = (await res.json())
-          .filter((v: Vehicle) => v.site !== 'XN - Decommissioned')
-          .map(normalizeVehicle);
-        vehiclesRef.current = data;
-        setVehicles(data);
-      }
+      const raw = await cachedFetchJson<Vehicle[]>(
+        CACHE_KEYS.fleetData,
+        CACHE_TTL.fleetData,
+        async () => {
+          const res = await authFetch('/api/data');
+          if (!res.ok) return null;
+          return res.json();
+        },
+      );
+      if (!raw) return;
+      const data = raw
+        .filter(v => v.site !== 'XN - Decommissioned')
+        .map(normalizeVehicle);
+      vehiclesRef.current = data;
+      setVehicles(data);
     } catch {}
   }, []);
 
   const loadEvents = useCallback(async () => {
     try {
-      const res = await authFetch('/api/events/log');
-      if (res.ok) {
-        const data: LogEntry[] = await res.json();
-        setEvents(data);
+      const data = await cachedFetchJson<LogEntry[]>(
+        CACHE_KEYS.fleetEvents,
+        CACHE_TTL.fleetEvents,
+        async () => {
+          const res = await authFetch('/api/events/log');
+          if (!res.ok) return null;
+          return res.json();
+        },
+      );
+      if (!data) return;
+      setEvents(data);
 
         // Surface new safety events as notifications
         const SAFEIQ_LABELS = ['Harsh Braking', 'Harsh Acceleration', 'Overspeeding', 'Overspeed Tiered'];
+        const SAFEIQ_OVERSPEED_MIN_EXCESS_KMH = 5;
+        const isOverspeedLabel = (label?: string) =>
+          label === 'Overspeeding' || label === 'Overspeed Tiered';
+        /** SafeIQ only reports overspeed when clearly ≥5 km/h over the posted limit. */
+        const meetsSafeIqOverspeedThreshold = (e: LogEntry) => {
+          if (!isOverspeedLabel(e.label)) return true;
+          if (e.speed == null || e.speedLimit == null) return false;
+          return e.speed - e.speedLimit >= SAFEIQ_OVERSPEED_MIN_EXCESS_KMH;
+        };
         const newOnes = data.filter(e => {
           if (!e.eventId || seenEventIds.current.has(e.eventId)) return false;
-          const isRelevant = (e.type === 'panic' || SAFEIQ_LABELS.includes(e.label || ''))
+          const isRelevant = SAFEIQ_LABELS.includes(e.label || '')
             && isKnownDriver(e.driverName);
           if (!isRelevant) return false;
+          if (!meetsSafeIqOverspeedThreshold(e)) return false;
           const age = Date.now() - new Date(e.eventTime || e.timestamp).getTime();
           return age < 10 * 60 * 1000; // only events in last 10 min
         });
@@ -478,7 +520,6 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
             });
           }
         }
-      }
     } catch {}
   }, []);
 
@@ -493,12 +534,20 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
 
   const loadFuelSummary = useCallback(async () => {
     try {
-      const res = await authFetch('/api/fuel/consumption?period=week');
-      if (!res.ok) return;
-      const data = await res.json() as {
+      const url = '/api/fuel/consumption?period=week';
+      const data = await cachedFetchJson<{
         assets?: { totalFuelLiters?: number }[];
         summary?: { totalFuelLiters?: number };
-      };
+      }>(
+        CACHE_KEYS.fuelConsumption(url),
+        CACHE_TTL.fuelConsumption,
+        async () => {
+          const res = await authFetch(url);
+          if (!res.ok) return null;
+          return res.json();
+        },
+      );
+      if (!data) return;
       const assets = data.assets ?? [];
       const totalFuel = data.summary?.totalFuelLiters
         ?? assets.reduce((s, a) => s + (a.totalFuelLiters ?? 0), 0);
@@ -512,6 +561,22 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
     setEnvironment({ weather: 'Partly cloudy', traffic: 'Moderate', temp: '28°C' });
   }, []);
 
+  /** Warm Utilization & KPIs so /kpi isn't a cold 20s+ log scan. */
+  const prefetchKpi = useCallback(async () => {
+    const url = '/api/kpi?period=week&scope=quarry';
+    try {
+      await cachedFetchJson(
+        CACHE_KEYS.kpi(url),
+        CACHE_TTL.kpi,
+        async () => {
+          const res = await authFetch(url);
+          if (!res.ok) return null;
+          return res.json();
+        },
+      );
+    } catch { /* ignore */ }
+  }, []);
+
   useEffect(() => {
     loadMetadata();
     loadVehicles();
@@ -519,25 +584,30 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
     loadDriverDistance();
     loadFuelSummary();
     loadEnvironment();
+    const kpiWarm = window.setTimeout(() => { void prefetchKpi(); }, 1500);
     const metaInterval = setInterval(loadMetadata, 10_000);
     const vehicleInterval = setInterval(loadVehicles, 10_000);
     const eventInterval = setInterval(loadEvents, 15_000);
     const distanceInterval = setInterval(loadDriverDistance, 60_000);
     const fuelInterval = setInterval(loadFuelSummary, 60_000);
     return () => {
+      clearTimeout(kpiWarm);
       clearInterval(metaInterval);
       clearInterval(vehicleInterval);
       clearInterval(eventInterval);
       clearInterval(distanceInterval);
       clearInterval(fuelInterval);
     };
-  }, [loadMetadata, loadVehicles, loadEvents, loadDriverDistance, loadFuelSummary, loadEnvironment]);
+  }, [loadMetadata, loadVehicles, loadEvents, loadDriverDistance, loadFuelSummary, loadEnvironment, prefetchKpi]);
 
-  const { score: fleetSafetyScore, delta: fleetScoreDelta } = computeFleetScore(events, vehicles.length);
+  const { score: fleetSafetyScore, delta: fleetScoreDelta } = useMemo(
+    () => computeFleetScore(events, vehicles.length, scoreConfig),
+    [events, vehicles.length, scoreConfig],
+  );
   const alerts = useMemo(() => deriveAlerts(events), [events]);
   const drivers = useMemo(
-    () => deriveDriverScores(events).filter(d => isKnownDriver(d.name)),
-    [events],
+    () => deriveDriverScores(events, scoreConfig.driverPenaltyPerEvent).filter(d => isKnownDriver(d.name)),
+    [events, scoreConfig.driverPenaltyPerEvent],
   );
   const insights = useMemo(() => deriveInsights(events, vehicles), [events, vehicles]);
   const maintenance = DEFAULT_MAINTENANCE;
@@ -590,6 +660,7 @@ export function FleetProvider({ children }: { children: React.ReactNode }) {
       openNotification, closeNotification,
       vaultRecords, addVaultRecord, updateVaultRecord,
       theme, setTheme, isMobile, reloadEvents,
+      scoreConfig, updateScoreConfig,
     }}>
       {children}
     </FleetContext.Provider>

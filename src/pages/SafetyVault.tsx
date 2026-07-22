@@ -93,7 +93,6 @@ function NewRecordModal({ onClose, onSave }: { onClose: () => void; onSave: (r: 
                 <option>Harsh Acceleration</option>
                 <option>Overspeeding</option>
                 <option>Harsh Cornering</option>
-                <option>Panic Alert</option>
                 <option>Near Miss</option>
                 <option>Collision</option>
                 <option>Vehicle Defect</option>

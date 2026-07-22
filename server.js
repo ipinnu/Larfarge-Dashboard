@@ -5,6 +5,8 @@ import { fileURLToPath } from 'url'
 import * as dotenv from 'dotenv'
 import { startPolling, pollOnce, clearTriggeredEvent, resetState, getWarningEvents, getSessionTrips, getDriverDistanceSummary } from './scripts/mix-test.js'
 import { resolveEnvironment } from './scripts/environment-service.js'
+import { computeConsumption } from './scripts/consumption-engine.js'
+import { computeKpi } from './scripts/kpi-engine.js'
 
 dotenv.config()
 
@@ -242,14 +244,29 @@ app.get('/api/driver-distance/journeys/:assetId', (req, res) => {
   res.json(asset.journeys)
 })
 
-// Fuel history — returns time-series per vehicle for day/week/month
+// Fuel history — returns time-series per vehicle for day/week/month or custom from/to
 app.get('/api/fuel/history', (req, res) => {
   if (!isAuthorized(req)) return unauthorized(res)
   try {
     const period = req.query.period || 'day'
+    const fromQ = req.query.from
+    const toQ = req.query.to
     const now = Date.now()
-    const cutoffs = { day: 24 * 60 * 60 * 1000, week: 7 * 24 * 60 * 60 * 1000, month: 30 * 24 * 60 * 60 * 1000 }
-    const cutoff = now - (cutoffs[period] || cutoffs.day)
+
+    let cutoffStart
+    let cutoffEnd = now
+    if (fromQ && toQ) {
+      cutoffStart = new Date(fromQ).getTime()
+      const toDate = new Date(toQ)
+      toDate.setHours(23, 59, 59, 999)
+      cutoffEnd = toDate.getTime()
+      if (Number.isNaN(cutoffStart) || Number.isNaN(cutoffEnd)) {
+        return res.status(400).json({ error: 'Invalid from/to dates' })
+      }
+    } else {
+      const cutoffs = { day: 24 * 60 * 60 * 1000, week: 7 * 24 * 60 * 60 * 1000, month: 30 * 24 * 60 * 60 * 1000 }
+      cutoffStart = now - (cutoffs[period] || cutoffs.day)
+    }
 
     const historyPath = path.join(process.cwd(), 'fuel-history.log')
     if (!fs.existsSync(historyPath)) return res.json([])
@@ -261,7 +278,10 @@ app.get('/api/fuel/history', (req, res) => {
     lines.forEach(line => {
       try {
         const entry = JSON.parse(line)
-        if (new Date(entry.timestamp).getTime() < cutoff) return
+        const eventType = entry.eventType || '5min_ticker'
+        if (eventType !== '5min_ticker') return
+        const ts = new Date(entry.timestamp).getTime()
+        if (ts < cutoffStart || ts > cutoffEnd) return
         if (!seriesMap.has(entry.assetId)) seriesMap.set(entry.assetId, [])
         seriesMap.get(entry.assetId).push({ time: entry.timestamp, level: entry.level })
       } catch { }
@@ -280,11 +300,49 @@ app.get('/api/fuel/history', (req, res) => {
 
     const result = []
     seriesMap.forEach((data, assetId) => {
+      data.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime())
       const info = vehicleLookup.get(assetId) || {}
-      result.push({ assetId, regNo: info.regNo || assetId, assetName: info.assetName || '', zone: info.zone || '', data })
+      result.push({
+        assetId,
+        regNo: (info.regNo || assetId).toString().trim(),
+        assetName: info.assetName || '',
+        zone: info.zone || '',
+        data,
+      })
     })
 
     res.json(result)
+  } catch {
+    res.status(500).end('Internal Server Error')
+  }
+})
+
+// Fuel consumption — asset/site metrics from fuel-history.log + trips.log
+app.get('/api/fuel/consumption', (req, res) => {
+  if (!isAuthorized(req)) return unauthorized(res)
+  try {
+    const period = req.query.period || 'week'
+    const from = req.query.from
+    const to = req.query.to
+    const site = req.query.site || null
+    const data = computeConsumption({ period, from, to, siteFilter: site })
+    res.json(data)
+  } catch {
+    res.status(500).end('Internal Server Error')
+  }
+})
+
+// Operational KPIs — utilization, availability, harsh braking, overspeeding, fatigue
+app.get('/api/kpi', (req, res) => {
+  if (!isAuthorized(req)) return unauthorized(res)
+  try {
+    const data = computeKpi({
+      period: req.query.period || 'week',
+      from: req.query.from,
+      to: req.query.to,
+      scope: req.query.scope || 'quarry',
+    })
+    res.json(data)
   } catch {
     res.status(500).end('Internal Server Error')
   }

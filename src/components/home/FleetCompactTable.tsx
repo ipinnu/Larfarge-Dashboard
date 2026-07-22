@@ -52,23 +52,22 @@ export default function FleetCompactTable({ vehicles }: Props) {
       <div className="bpl-fleet-table-body">
         {vehicles.map(v => {
           const colors = getStatusColor(v.status);
-          const isPanic = v.panic;
           const isExcess = v.status === 'Excessive Idle';
-          const rowBg = isPanic ? 'var(--cd-danger-bg, #fff1f2)' : isExcess ? '#fefce8' : 'var(--cd-surface)';
+          const rowBg = isExcess ? '#fefce8' : 'var(--cd-surface)';
 
           return (
             <div
               key={v.id}
-              className={`bpl-fleet-table-row${isPanic ? ' panic' : ''}`}
+              className="bpl-fleet-table-row"
               style={{
                 gridTemplateColumns: GRID_COLS,
                 backgroundColor: rowBg,
-                borderColor: isPanic ? 'var(--cd-danger-border, #fecdd3)' : isExcess ? '#fcd34d' : 'var(--cd-border)',
+                borderColor: isExcess ? '#fcd34d' : 'var(--cd-border)',
               }}
             >
               <div className="bpl-fleet-cell-reg">{v.regNo}</div>
               <div className="bpl-fleet-cell-transporter">
-                <span className="bpl-fleet-dot" style={{ background: isPanic ? 'var(--bpl-red)' : 'var(--bpl-blue)' }} />
+                <span className="bpl-fleet-dot" style={{ background: 'var(--bpl-blue)' }} />
                 {v.transporter}
               </div>
               <div className="bpl-fleet-cell-asset">{v.assetName}</div>

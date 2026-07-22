@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, Bell, Search, UserCircle, ShieldAlert } from 'lucide-react';
 import Sidebar from './Sidebar';
-import ARIAChat from '../ARIAChat';
 import SafetyToast from '../SafetyToast';
 import SafetyIncidentModal from '../SafetyIncidentModal';
 import { useFleet } from '../../context/FleetContext';
@@ -18,11 +17,7 @@ function getPageTitle(pathname: string): { title: string; sub: string } {
     '/trips/dispatch': { title: 'Trips', sub: '— dispatch & journey planning' },
     '/aria': { title: 'AI Insights', sub: '— SafeIQ analyses' },
     '/drivers': { title: 'Driver Management', sub: '— profiles and safety scores' },
-    '/drivers/coaching': { title: 'Driver Management', sub: '— coaching history' },
-    '/drivers/training': { title: 'Driver Management', sub: '— training records' },
-    '/drivers/certifications': { title: 'Driver Management', sub: '— certifications' },
     '/incidents': { title: 'Incident Intelligence', sub: '— event explorer' },
-    '/incidents/analysis': { title: 'Incident Intelligence', sub: '— analysis' },
     '/incidents/response': { title: 'Incident Intelligence', sub: '— response tracking' },
     '/vault': { title: 'Safety Vault', sub: '— incident records' },
     '/vault/safeiq': { title: 'Safety Vault', sub: '— SafeIQ analysis' },
@@ -31,11 +26,13 @@ function getPageTitle(pathname: string): { title: string; sub: string } {
     '/vault/acknowledgements': { title: 'Safety Vault', sub: '— acknowledgements' },
     '/vault/audit': { title: 'Safety Vault', sub: '— audit trail' },
     '/tankers': { title: 'Bulk Tankers', sub: '— East & West zone fleet' },
+    '/fuel/monitoring': { title: 'Fuel', sub: '— monitoring' },
+    '/fuel/consumption': { title: 'Fuel', sub: '— consumption' },
     '/reports': { title: 'Reports', sub: '— event log and trends' },
     '/reports/documents': { title: 'Documents', sub: '— report repository' },
     '/maintenance': { title: 'Maintenance', sub: '— scheduling & service' },
     '/settings/general': { title: 'Settings', sub: '— general' },
-    '/settings/thresholds': { title: 'Settings', sub: '— alert thresholds' },
+    '/settings/thresholds': { title: 'Settings', sub: '— safety score & thresholds' },
     '/settings/api': { title: 'Settings', sub: '— API connections' },
     '/settings/roles': { title: 'Settings', sub: '— roles & permissions' },
   };
@@ -315,7 +312,6 @@ export default function AppShell() {
       {selectedNotification && (
         <SafetyIncidentModal notification={selectedNotification} onClose={closeNotification} />
       )}
-      <ARIAChat />
     </div>
   );
 }

@@ -5,10 +5,8 @@ import FleetSafetyScore from '../components/home/FleetSafetyScore';
 import StatusStatsRow from '../components/home/StatusStatsRow';
 import FleetViewCard from '../components/home/FleetViewCard';
 import AlertsWidget from '../components/home/AlertsWidget';
-import DispatchWidget from '../components/home/DispatchWidget';
 import FuelChartWidget from '../components/home/FuelChartWidget';
 import DriverPerformanceWidget from '../components/home/DriverPerformanceWidget';
-import MaintenanceWidget from '../components/home/MaintenanceWidget';
 import AiInsightsWidget from '../components/home/AiInsightsWidget';
 import { EnvironmentStrip } from '../components/home/EnvironmentStrip';
 
@@ -39,16 +37,14 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="bpl-home-mid-row bpl-home-mid-row--cols-3">
+      <div className="bpl-home-mid-row bpl-home-mid-row--cols-2">
         <FleetViewCard statusFilter={statusFilter} />
-        <DispatchWidget />
         <FuelChartWidget />
       </div>
 
       <div className="bpl-home-bottom-row">
         <AlertsWidget />
         <DriverPerformanceWidget />
-        <MaintenanceWidget />
         <AiInsightsWidget />
       </div>
 
