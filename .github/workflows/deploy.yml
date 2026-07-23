@@ -1,8 +1,9 @@
-name: Deploy BPL Dashboard
+name: Deploy HBM Dashboard
 
-# Secrets required (only these four):
+# Secrets:
 #   SSH_HOST, SSH_PORT, SSH_USER, SSH_PRIVATE_KEY
-# App path / PM2 name are fixed below — not secrets.
+#   VITE_API_SECRET, VITE_ANTHROPIC_API_KEY  (build-time only)
+# Runtime MIX_*/API_SECRET/PORT stay on droplet .env — never rebuild frontend there.
 
 on:
   push:
@@ -10,10 +11,80 @@ on:
       - main
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy to DigitalOcean
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build
+        env:
+          VITE_API_SECRET: ${{ secrets.VITE_API_SECRET }}
+          VITE_ANTHROPIC_API_KEY: ${{ secrets.VITE_ANTHROPIC_API_KEY }}
+        run: npm run build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hbm-dist
+          path: dist
+          retention-days: 3
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: hbm-dist
+          path: dist
+
+      - name: Pull code and lean install
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          command_timeout: 15m
+          script: |
+            set -e
+            cd /var/www/larfarge-dashboard
+            git fetch origin main
+            git reset --hard origin/main
+            if ! swapon --show | grep -q .; then
+              if [ ! -f /swapfile ]; then
+                fallocate -l 2G /swapfile 2>/dev/null || dd if=/dev/zero of=/swapfile bs=1M count=2048
+                chmod 600 /swapfile
+                mkswap /swapfile
+              fi
+              swapon /swapfile || true
+            fi
+            # Ensure nginx port + heap for 1GB droplet
+            grep -q '^PORT=' .env && sed -i 's/^PORT=.*/PORT=3003/' .env || echo 'PORT=3003' >> .env
+            npm ci --omit=dev --no-audit --no-fund
+            mkdir -p dist
+            rm -rf dist/assets dist/index.html
+
+      - name: Upload dist to droplet
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          source: "dist/*"
+          target: /var/www/larfarge-dashboard/dist
+          overwrite: true
+          strip_components: 1
+
+      - name: Restart app
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -23,9 +94,12 @@ jobs:
           script: |
             set -e
             cd /var/www/larfarge-dashboard
-            git fetch origin
-            git reset --hard origin/main
-            npm install
-            NODE_OPTIONS=--max-old-space-size=2048 npm run build
-            pm2 restart larfarge-dashboard --update-env
+            # Recreate process with capped heap if needed
+            if ! pm2 describe larfarge-dashboard >/dev/null 2>&1; then
+              PORT=3003 pm2 start server.js --name larfarge-dashboard --node-args='--max-old-space-size=768'
+            else
+              pm2 restart larfarge-dashboard --update-env
+            fi
             pm2 save
+            sleep 5
+            curl -sf -o /dev/null -w "%{http_code}\n" http://127.0.0.1:3003/
