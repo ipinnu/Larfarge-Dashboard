@@ -1,5 +1,9 @@
 name: Deploy BPL Dashboard
 
+# Secrets required (only these four):
+#   SSH_HOST, SSH_PORT, SSH_USER, SSH_PRIVATE_KEY
+# App path / PM2 name are fixed below — not secrets.
+
 on:
   push:
     branches:
@@ -18,9 +22,10 @@ jobs:
           port: ${{ secrets.SSH_PORT }}
           script: |
             set -e
-            cd ${{ secrets.APP_DIR }}
-            git pull origin main
+            cd /var/www/larfarge-dashboard
+            git fetch origin
+            git reset --hard origin/main
             npm install
-            npm run build
-            pm2 restart ${{ secrets.PM2_APP_NAME }} --update-env
+            NODE_OPTIONS=--max-old-space-size=2048 npm run build
+            pm2 restart larfarge-dashboard --update-env
             pm2 save
